@@ -4,7 +4,7 @@ Created on Wed Jan  8 21:52:10 2025
 
 @author: hugo.nguyen
 """
-
+# %%
 import pandas as pd
 import numpy as np
 from scipy.io import loadmat
@@ -34,10 +34,10 @@ def load_data(greek, state):
             data_dict[freq][condition] = data_list
     return data_dict
 
-def heat_map_fq_state(greek, state, annot = False):
+def heat_map_fq_state(greek, state, annot = False, vmin=None, vmax=None):
     for i, _ in enumerate(data_dict[greek][state]):
         plt.title(f'Matrice {greek}-{state} {i+1}')
-        sns.heatmap(_, annot=annot, cmap ='viridis')
+        sns.heatmap(_, annot=annot, cmap ='viridis', vmin=vmin, vmax=vmax)
         plt.show()
         
 def get_data_greek_state(greek, state):
@@ -81,6 +81,10 @@ def get_summary(greek, state, by_patient=False):
             
             print(f'{freq}-{dstate} mean : ', np.mean(data))
             print(f'{freq}-{dstate} std : ', np.std(data))
+            # get min that is not 0
+            min_ = np.min([np.min(get_upper(patient)) for patient in data if np.min(get_upper(patient)) != 0])
+            print(f'{freq}-{dstate} min : ', min_)
+            print(f'{freq}-{dstate} max : ', np.max(data))
             for i, patient in enumerate(data):
                 data_patient = get_upper(patient)
                 print(f'      patient {i+1} mean: {np.mean(data_patient):.3f}   | std: {np.std(data_patient):.3f}')
@@ -101,7 +105,7 @@ if __name__ == '__main__':
 
     data_dict = load_data(greek, state)
     
-    #heat_map_fq_state('ALPHA', 'AD')
+    heat_map_fq_state('ALPHA', 'AD')
     get_summary(greek, state)
     
     plot_histo(greek, state)
