@@ -109,6 +109,7 @@ def get_summary(greek, state, by_patient=False):
                     data_patient = get_upper(patient)
                     print(f'      patient {i+1:3d} mean: {np.mean(data_patient):.3f}   | std: {np.std(data_patient):.3f}')
             print()
+        print("=====================================")
                 
 #%%
 path = './EpEn Data_sans diag_norm_90 sujets/EpEn Data_sans diag_norm_90 sujets'
