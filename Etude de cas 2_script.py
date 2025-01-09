@@ -36,7 +36,7 @@ def load_data(greek, state):
 
 def heat_map_fq_state(greek, state, annot = False):
     for i, _ in enumerate(data_dict[greek][state]):
-        plt.title(f'Matrice de corrélation de {greek}-{state} {i+1}')
+        plt.title(f'Matrice {greek}-{state} {i+1}')
         sns.heatmap(_, annot=annot, cmap ='viridis')
         plt.show()
     
@@ -56,7 +56,6 @@ if __name__ == '__main__':
 
     data_dict = load_data(greek, state)
     
-    
-    heat_map_fq_state('ALPHA', 'AD')
+    #heat_map_fq_state('ALPHA', 'AD')
     
     
