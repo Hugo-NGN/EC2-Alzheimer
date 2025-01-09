@@ -87,10 +87,10 @@ def get_summary(greek, state, by_patient=False):
             print()   
                 
 #%%
+path = './EpEn Data_sans diag_norm_90 sujets/EpEn Data_sans diag_norm_90 sujets'
 if __name__ == '__main__':
     
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    path = './EpEn Data_sans diag_norm_90 sujets/EpEn Data_sans diag_norm_90 sujets'
     
     greek = ['ALPHA', 'BETA', 'DELTA', 'THETA'] #bp-frequence  
     
