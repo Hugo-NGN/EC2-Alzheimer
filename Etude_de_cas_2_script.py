@@ -60,17 +60,33 @@ def plot_histo(greek, state):
             
 
 def plot_scatter_mean_std(greek, state):
+    # Créer un graphique pour chaque fréquence
     for freq in greek:
-        for dstate in state.keys():
-            data = (get_data_greek_state(freq, dstate))
-            plt.figure(figsize=(15,10))
-            for i, patient in enumerate(data):
+        plt.figure(figsize=(15, 10))
+        
+        # Définir une liste de couleurs pour chaque état (state)
+        colors = plt.cm.get_cmap('tab10', len(state.keys()))  # Utilisation d'un cmap avec différentes couleurs
+        
+        # Pour chaque état dans state.keys()
+        for i, dstate in enumerate(state.keys()):
+            data = get_data_greek_state(freq, dstate)
+            
+            # Tracer les patients pour chaque état avec une couleur différente
+            for j, patient in enumerate(data):
                 data_patient = get_upper(patient)
-                plt.scatter(np.mean(data_patient),np.std(data_patient), label=f'patient {i+1}')
-                plt.text(np.mean(data_patient), np.std(data_patient), f'{i+1}', fontsize=9, ha='right', va='bottom')
-            plt.title(f'{freq}-{dstate}')
+                # Afficher le scatter pour chaque patient
+                plt.scatter(np.mean(data_patient), np.std(data_patient), label=f'{dstate}' if j == 0 else "", color=colors(i))
+                # Ajouter le texte avec le numéro du patient
+                plt.text(np.mean(data_patient), np.std(data_patient), f'{j+1}', fontsize=9, ha='right', va='bottom')
+        
+        plt.title(f'Scatter plot for frequency: {freq}')
+        plt.grid(True)
 
-def plot_scatter_mean_std(greek, state, group_states=False):
+        plt.legend(title="State")
+
+        plt.show()
+        
+def plot_scatter_mean_std2(greek, state, group_states=False):
     colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k'][:len(greek)]
     for freq in greek:
         c = None
@@ -107,19 +123,25 @@ def plot_scatter_mean_std(greek, state, group_states=False):
             plt.show()
 
             
-def get_mean_by_electrod(greek, state):
-    dict_mean = dict()
+def get_mean_electrod(greek, state):
+    mean_results = {} 
+
     for freq in greek:
-        if freq not in dict_mean: 
-            dict_mean[freq] = dict()
+        mean_results[freq] = {} 
         for dstate in state.keys():
-            if dstate not in dict_mean[freq]:  
-                dict_mean[freq][dstate] = []
+        
             data = get_data_greek_state(freq, dstate)
+            all_patients_data = []  
+
             for patient in data:
-                mean_elec = np.mean(patient, axis=0)
-                dict_mean[freq][dstate].append(mean_elec)  
-    return dict_mean
+                data_patient = get_upper(patient)
+                all_patients_data.append(data_patient)
+                
+            all_patients_data = np.array(all_patients_data)
+            mean_per_cell = np.mean(all_patients_data, axis=0)  
+            mean_results[freq][dstate] = mean_per_cell
+
+    return mean_results
 
                 
 def group_mean_vectors_as_matrices(greek, state):
@@ -253,9 +275,11 @@ if __name__ == '__main__':
     
     #plot_histo(greek, state)
 
-    #plot_scatter_mean_std(greek, state)
+    plot_scatter_mean_std(greek, state)
 
     #dict_mean = get_mean_by_electrod(greek, state)  
+    
+    mean_electrod = get_mean_electrod(greek, state)
     
     #mean_vectors_by_state = group_mean_vectors_as_matrices(greek, state)
     
@@ -325,4 +349,5 @@ if __name__ == '__main__':
             plt.grid(True)
             plt.show()
     
+#%%
 
