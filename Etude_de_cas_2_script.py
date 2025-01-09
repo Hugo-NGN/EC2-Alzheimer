@@ -58,6 +58,7 @@ def plot_histo(greek, state):
             plt.title(f'{freq}-{dstate}\n mean={np.mean(data):.2f} std={np.std(data):.2f}')
             plt.show()
             
+<<<<<<< HEAD
 def plot_scatter_mean_std(greek, state):
     for freq in greek:
         for dstate in state.keys():
@@ -68,6 +69,37 @@ def plot_scatter_mean_std(greek, state):
                 plt.scatter(np.mean(data_patient),np.std(data_patient), label=f'patient {i+1}')
                 plt.text(np.mean(data_patient), np.std(data_patient), f'{i+1}', fontsize=9, ha='right', va='bottom')
             plt.title(f'{freq}-{dstate}')
+=======
+def plot_scatter_mean_std(greek, state, group_states=False):
+    colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k'][:len(greek)]
+    for freq in greek:
+        c = None
+        if group_states:
+            plt.figure(figsize=(15,10))
+        for j, dstate in enumerate(state.keys()):
+            data = (get_data_greek_state(freq, dstate))
+            if not group_states:
+                plt.figure(figsize=(15,10))
+            else:
+                # mettre les points de même état dans la même couleur
+                c = colors[j]
+            for i, patient in enumerate(data):
+                data_patient = get_upper(patient)
+                plt.scatter(np.mean(data_patient),np.std(data_patient), label=f'patient {i+1}' if not group_states else None, c = c)
+                plt.text(np.mean(data_patient), np.std(data_patient), f'{i+1}', fontsize=9, ha='right', va='bottom')
+            if not group_states:
+                plt.title(f'{freq}-{dstate}')
+                plt.xlabel('mean')
+                plt.ylabel('std')
+                plt.grid()
+                plt.legend()
+                plt.show()
+            else:
+                # ajouter une légende pour les états
+                plt.scatter([], [], label=dstate, c=colors[j])
+        if group_states:
+            plt.title(f'{freq}')
+>>>>>>> 9b3e0471636a878120d5b18a56e6650740347f11
             plt.xlabel('mean')
             plt.ylabel('std')
             plt.grid()
@@ -81,6 +113,7 @@ def get_summary(greek, state, by_patient=False):
             
             print(f'{freq}-{dstate} mean : ', np.mean(data))
             print(f'{freq}-{dstate} std : ', np.std(data))
+<<<<<<< HEAD
             # get min that is not 0
             min_ = np.min([np.min(get_upper(patient)) for patient in data if np.min(get_upper(patient)) != 0])
             print(f'{freq}-{dstate} min : ', min_)
@@ -191,21 +224,43 @@ def create_frequency_matrices_with_patient_labels(greek, state):
     return frequency_matrices
 
 
+=======
+            # obtenir le minimum non nul
+            min_ = np.min([np.min(get_upper(patient)) for patient in data if np.min(get_upper(patient)) != 0])
+            print(f'{freq}-{dstate} min : ', min_)
+            print(f'{freq}-{dstate} max : ', np.max(data))
+            if by_patient:
+                for i, patient in enumerate(data):
+                    data_patient = get_upper(patient)
+                    print(f'      patient {i+1:3d} mean: {np.mean(data_patient):.3f}   | std: {np.std(data_patient):.3f}')
+            print()
+        print("=====================================")
+                
+>>>>>>> 9b3e0471636a878120d5b18a56e6650740347f11
 #%%
 path = './EpEn Data_sans diag_norm_90 sujets/EpEn Data_sans diag_norm_90 sujets'
 if __name__ == '__main__':
     
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     
+<<<<<<< HEAD
     greek = ['ALPHA', 'BETA', 'DELTA', 'THETA'] #bp-frequence  
     
     state = {'AD':28, 'MCI':40, 'SCI':22} #etat du trouble (keys) : nombre de patient (values)
     
     NB_ELEC = 30 #nombre d'électrode (constante)
+=======
+    greek = ['ALPHA', 'BETA', 'DELTA', 'THETA']  # bp-frequence  
+    
+    state = {'AD':28, 'MCI':40, 'SCI':22}  # etat du trouble (keys) : nombre de patient (values)
+    
+    NB_ELEC = 30  # nombre d'électrode (constante)
+>>>>>>> 9b3e0471636a878120d5b18a56e6650740347f11
 
 
     data_dict = load_data(greek, state)
     
+<<<<<<< HEAD
     #heat_map_fq_state('ALPHA', 'AD')
     
     #get_summary(greek, state)
@@ -286,3 +341,24 @@ if __name__ == '__main__':
             plt.show()
     
     
+=======
+    heat_map_fq_state('ALPHA', 'AD')
+    get_summary(greek, state)
+    
+    plot_histo(greek, state)
+
+    plot_scatter_mean_std(greek, state)
+    
+# %%
+heat_map_fq_state('ALPHA', 'AD', vmin=0.44, vmax=0.77)
+
+# %%
+get_summary(greek, state)
+
+# %%
+plot_histo(greek, state)
+
+plot_scatter_mean_std(greek, state)
+# %%
+plot_scatter_mean_std(greek, state, group_states=True)
+>>>>>>> 9b3e0471636a878120d5b18a56e6650740347f11
