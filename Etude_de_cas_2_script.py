@@ -60,7 +60,7 @@ def plot_histo(greek, state):
             
 def plot_scatter_mean_std(greek, state, group_states=False):
     colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k'][:len(greek)]
-    for i, freq in enumerate(greek):
+    for freq in greek:
         c = None
         if group_states:
             plt.figure(figsize=(15,10))
@@ -104,9 +104,10 @@ def get_summary(greek, state, by_patient=False):
             min_ = np.min([np.min(get_upper(patient)) for patient in data if np.min(get_upper(patient)) != 0])
             print(f'{freq}-{dstate} min : ', min_)
             print(f'{freq}-{dstate} max : ', np.max(data))
-            for i, patient in enumerate(data):
-                data_patient = get_upper(patient)
-                print(f'      patient {i+1:3d} mean: {np.mean(data_patient):.3f}   | std: {np.std(data_patient):.3f}')
+            if by_patient:
+                for i, patient in enumerate(data):
+                    data_patient = get_upper(patient)
+                    print(f'      patient {i+1:3d} mean: {np.mean(data_patient):.3f}   | std: {np.std(data_patient):.3f}')
             print()
                 
 #%%
@@ -131,3 +132,15 @@ if __name__ == '__main__':
 
     plot_scatter_mean_std(greek, state)
     
+# %%
+heat_map_fq_state('ALPHA', 'AD', vmin=0.44, vmax=0.77)
+
+# %%
+get_summary(greek, state)
+
+# %%
+plot_histo(greek, state)
+
+plot_scatter_mean_std(greek, state)
+# %%
+plot_scatter_mean_std(greek, state, group_states=True)
