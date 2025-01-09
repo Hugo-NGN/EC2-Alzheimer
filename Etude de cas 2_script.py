@@ -39,8 +39,53 @@ def heat_map_fq_state(greek, state, annot = False):
         plt.title(f'Matrice {greek}-{state} {i+1}')
         sns.heatmap(_, annot=annot, cmap ='viridis')
         plt.show()
-    
+        
+def get_data_greek_state(greek, state):
+    return (data_dict[greek][state])
 
+def get_upper(data_freq_dstate):
+    return data_freq_dstate[np.triu_indices_from(data_freq_dstate, k=1)]
+
+def plot_histo(greek, state):
+    for freq in greek:
+        for dstate in state.keys():
+            data = (get_data_greek_state(freq, dstate))
+            plt.figure(figsize=(20,10))
+            for i, _ in enumerate(data):
+                plt.hist(get_upper(_), label= f'patient {i+1}', bins=30)
+            plt.legend()
+            plt.grid()
+            plt.title(f'{freq}-{dstate}\n mean={np.mean(data):.2f} std={np.std(data):.2f}')
+            plt.show()
+            
+def plot_scatter_mean_std(greek, state):
+    for freq in greek:
+        for dstate in state.keys():
+            data = (get_data_greek_state(freq, dstate))
+            plt.figure(figsize=(15,10))
+            for i, patient in enumerate(data):
+                data_patient = get_upper(patient)
+                plt.scatter(np.mean(data_patient),np.std(data_patient), label=f'patient {i+1}')
+                plt.text(np.mean(data_patient), np.std(data_patient), f'{i+1}', fontsize=9, ha='right', va='bottom')
+            plt.title(f'{freq}-{dstate}')
+            plt.xlabel('mean')
+            plt.ylabel('std')
+            plt.grid()
+            plt.legend()
+            plt.show()
+
+def get_summary(greek, state, by_patient=False):
+    for freq in greek:
+        for dstate in state.keys():
+            data = (get_data_greek_state(freq, dstate))
+            
+            print(f'{freq}-{dstate} mean : ', np.mean(data))
+            print(f'{freq}-{dstate} std : ', np.std(data))
+            for i, patient in enumerate(data):
+                data_patient = get_upper(patient)
+                print(f'      patient {i+1} mean: {np.mean(data_patient):.3f}   | std: {np.std(data_patient):.3f}')
+            print()   
+                
 #%%
 if __name__ == '__main__':
     
@@ -57,5 +102,9 @@ if __name__ == '__main__':
     data_dict = load_data(greek, state)
     
     #heat_map_fq_state('ALPHA', 'AD')
+    get_summary(greek, state)
     
+    plot_histo(greek, state)
+
+    plot_scatter_mean_std(greek, state)
     
