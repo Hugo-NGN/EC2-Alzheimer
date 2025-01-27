@@ -18,6 +18,7 @@ from scipy.io import loadmat
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os 
+import itertools
 from sklearn.svm import SVC
 from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import accuracy_score
@@ -268,34 +269,64 @@ def get_summary(greek, state, by_patient=False):
 def proj_acp_4freq(dict_pca, greek=['ALPHA', 'BETA', 'DELTA', 'THETA']):
     #récupérer les projections des individus pour les 4 acp des fréquences
     variable_acp = list()
-    for state in ['AD', 'MCI', 'SCI']:
-        for freq in greek:
-            data_pca = dict_pca[freq].T
-            data_norm = (data_pca - data_pca.mean()) / data_pca.std()
-        
-        
-            corr = data_norm.corr()
-        
-        
-            pca = PCA(n_components=5).set_output(transform='pandas')
-            data_pca_transformed = pca.fit_transform(corr)
-            
+
+    for freq in greek:
+        data_pca = dict_pca[freq].T
+        data_norm = (data_pca - data_pca.mean()) / data_pca.std()
     
-            index = [label.split('_')[0] for label in data_pca_transformed.index]        
-            data_pca_transformed.index = index
-            data_pca_transformed.columns = [f"c{_}" for _ in range(1,len(data_pca_transformed.columns)+1)]
-            data_pca_transformed.columns = [col+"_"+freq for col in data_pca_transformed.columns]
-            
-            variable_acp.append(data_pca_transformed)
+    
+        corr = data_norm.corr()
+    
+    
+        pca = PCA(n_components=5).set_output(transform='pandas')
+        data_pca_transformed = pca.fit_transform(corr)
+        
+
+        index = [label.split('_')[0] for label in data_pca_transformed.index]        
+        data_pca_transformed.index = index
+        data_pca_transformed.columns = [f"c{_}" for _ in range(1,len(data_pca_transformed.columns)+1)]
+        data_pca_transformed.columns = [col+"_"+freq for col in data_pca_transformed.columns]
+        
+        variable_acp.append(data_pca_transformed)
        
-    
-    
-    
-    
-    
+
     #coordonnées dans l'espace latent à utiliser pour le double SVM       
     proj_pca_concat = pd.concat(variable_acp, axis = 1)
     return proj_pca_concat
+
+
+
+def svm_skf(data, class_svm, print_res = False):
+    index = data.index
+    
+    binary_labels = [1 if label == class_svm else 0 for label in index]
+    copy_latent_4freq = data.copy()
+    copy_latent_4freq['label'] = binary_labels
+
+    svm = SVC(kernel='linear')
+    skf = StratifiedKFold(n_splits=5)
+    accuracies = []
+    output = np.zeros(len(data))
+    
+    
+    for train_index, test_index in skf.split(copy_latent_4freq.iloc[:, :-1], copy_latent_4freq['label']):
+        X_train, X_test = copy_latent_4freq.iloc[train_index, :-1], copy_latent_4freq.iloc[test_index, :-1]
+        y_train, y_test = copy_latent_4freq.iloc[train_index, -1], copy_latent_4freq.iloc[test_index, -1]
+
+        svm.fit(X_train, y_train)
+        y_pred = svm.predict(X_test)
+        output[test_index] = y_pred
+        accuracies.append(accuracy_score(y_test, y_pred))
+
+    mean_accuracy = np.mean(accuracies)
+
+
+    if print_res:
+        print(f"Mean accuracy with StratifiedKFold (Classe discriminante : {state}) : {mean_accuracy:.2f}")
+    
+    return output, mean_accuracy
+
+
 
 #%%
 path = './EpEn Data_sans diag_norm_90 sujets/EpEn Data_sans diag_norm_90 sujets'
@@ -308,13 +339,6 @@ if __name__ == '__main__':
     state = {'AD':28, 'MCI':40, 'SCI':22} #etat du trouble (keys) : nombre de patient (values)
     
     NB_ELEC = 30 #nombre d'électrode (constante)
-
-    greek = ['ALPHA', 'BETA', 'DELTA', 'THETA']  # bp-frequence  
-    
-    state = {'AD':28, 'MCI':40, 'SCI':22}  # etat du trouble (keys) : nombre de patient (values)
-    
-    NB_ELEC = 30  # nombre d'électrode (constante)
-
 
     data_dict = load_data(greek, state)
     
@@ -469,78 +493,59 @@ if __name__ == '__main__':
                 plt.show()
     
 
-#%% SVM sur les projections des ACPs des 4 fréquences    
+#%% Exploration pour le choix de la classe discriminante pour le SVM n°1 (sur les projections des ACPs des 4 fréquences)
 
     latent_4freq = proj_acp_4freq(dict_pca)
     index = latent_4freq.index
 
-    # 1er SVM 
-    equilibrer_prop_classe = True #si True alors stratifid k-fold pour équilibrer les classes du 1er SVM sinon LOOCV
-    
-    if equilibrer_prop_classe == False:
-        for state in ['AD', 'MCI', 'SCI']:
-            binary_labels = [1 if label == state else 0 for label in index]
-            copy_latent_4freq = latent_4freq.copy()
-            copy_latent_4freq.index = binary_labels
-            svm = SVC(kernel='linear')
-            loo = LeaveOneOut()
-            accuracies = []
-            
-            for train_index, test_index in loo.split(copy_latent_4freq):
-                X_train, X_test = copy_latent_4freq.iloc[train_index], copy_latent_4freq.iloc[test_index]
-                y_train, y_test = copy_latent_4freq.index[train_index], copy_latent_4freq.index[test_index]
-            
-                svm.fit(X_train, y_train)
-                
-                y_pred = svm.predict(X_test)
-                
-                
-                accuracies.append(accuracy_score([y_test], [y_pred]))
-            
-            mean_accuracy = np.mean(accuracies)
-            print(f"Mean accuracy with LOOCV (Classe discriminante : {state}) : {mean_accuracy:.2f}")
-
-    elif equilibrer_prop_classe == True:
-        for state in ['AD', 'MCI', 'SCI']:
-            binary_labels = [1 if label == state else 0 for label in index]
-            copy_latent_4freq = latent_4freq.copy()
-            copy_latent_4freq['label'] = binary_labels
-        
-            svm = SVC(kernel='linear')
-            skf = StratifiedKFold(n_splits=5)
-            accuracies = []
-        
-            for train_index, test_index in skf.split(copy_latent_4freq.iloc[:, :-1], copy_latent_4freq['label']):
-                X_train, X_test = copy_latent_4freq.iloc[train_index, :-1], copy_latent_4freq.iloc[test_index, :-1]
-                y_train, y_test = copy_latent_4freq.iloc[train_index, -1], copy_latent_4freq.iloc[test_index, -1]
-        
-                svm.fit(X_train, y_train)
-                y_pred = svm.predict(X_test)
-        
-                accuracies.append(accuracy_score(y_test, y_pred))
-        
-            mean_accuracy = np.mean(accuracies)
-            print(f"Mean accuracy with StratifiedKFold (Classe discriminante : {state}) : {mean_accuracy:.2f}")
-    
- #%%   
-
+    states = ['AD', 'MCI', 'SCI']
+    pairs_states = list(itertools.permutations(states, 2))
     
     
+    for pair in pairs_states:
+        class_svm1 = pair[0]
+        class_svm2 = pair[1]
+        
+        
+        # 1er SVM:
+        output_svm1, svm1_accuracy = svm_skf(latent_4freq, class_svm1)
+        
+       
+        #Preparation entrée du 2e SVM
+        latent_post_svm1 = pd.concat([latent_4freq, pd.DataFrame(output_svm1, columns=['label_svm1'], index=latent_4freq.index)], axis=1)
+        
+        latent_post_svm1['label_svm2'] =  [1 if label == class_svm2 else 0 for label in latent_post_svm1.index]
+        
+        latent_post_svm1 = latent_post_svm1[latent_post_svm1['label_svm1']==0]
     
+        latent_post_svm1.drop('label_svm1', axis=1, inplace = True)
+        
+        
+        print(f'Classe 1: {class_svm1}         ||          Classe 2: {class_svm2}')
+        print('------------------------------------------------------------------')
+        print(f'Accuracy en sortie du 1e SVM (par rapport à: {class_svm1})  : {svm1_accuracy*100:.2f} %')
+    
+    
+        
+        
+        # 2e SVM:
+        output_svm2, svm2_accuracy = svm_skf(latent_post_svm1.iloc[:,:-1], class_svm2)
+        
+        latent_post_svm2 = pd.concat([latent_post_svm1, pd.DataFrame(output_svm2, columns=['label_svm2_pred'], index=latent_post_svm1.index)], axis=1)
+        
+        latent_post_svm2['label_svm2'] =  [1 if label == class_svm2 else 0 for label in latent_post_svm1.index]
+        
+        #latent_post_svm2 = latent_post_svm1[latent_post_svm1['label_svm2']==0]
+        #latent_post_svm2.drop('label_svm2', axis=1, inplace = True)
+        
+        
+        print('------------------------------------------------------------------')
+        print(f'Accuracy en sortie du 2e SVM (par rapport à: {class_svm2})  : {svm2_accuracy*100:.2f} %')
+        print('------------------------------------------------------------------')
+        print('\n')
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+    
+#%%
 
 
 
