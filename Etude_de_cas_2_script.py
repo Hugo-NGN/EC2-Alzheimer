@@ -295,142 +295,247 @@ if __name__ == '__main__':
     dict_pca = create_frequency_matrices_with_patient_labels(greek, state)
     
     
-    #%%
-    
 
     #%% ACP
-    from sklearn.decomposition import PCA
-
-    do_ACP_for = 'electrode' # 'patient' ou 'electrode' selon la variable à explorer (quand on projette les patients on peut voir les classes)
+    acp_explo = False
     
-    if do_ACP_for == 'patient':
-
-        for freq in greek:
-            data = dict_pca[freq]
-            data_norm = (data-data.mean())/data.std()
-            
-            corr = (data_norm).corr()
-            
-            pca = PCA(n_components=5)
-            pca.fit(corr)
-            
-            data_pca = pca.fit_transform(corr)
-            
-            """
-            #plot variance cumulée
-            exp_var= (pca.explained_variance_ratio_)
-            plt.plot(np.insert(np.cumsum(exp_var),0,0), color='red')
-            plt.bar(np.arange(1,len(exp_var)+1,1),np.cumsum(exp_var))
-            #plt.axhline(.9, linestyle='--', color= 'gray')
-            plt.xlabel('valeurs propres')
-            plt.ylabel('%')
-            plt.title(f'{freq}-variance expliquée cumulée')
-            plt.show()
-            """
-            explained_variance_ratio = pca.explained_variance_ratio_  # Variance expliquée par chaque composante
-            fig, ax = plt.subplots(figsize=(8, 6))
-            
-            # Projection des individus sur les deux premières composantes principales
-            ax.scatter(data_pca[:, 0], data_pca[:, 1], c='blue', edgecolors='k', alpha=0.7)
-            
-            # Titres et labels
-            ax.set_xlabel(f'PC1 ({explained_variance_ratio[0] * 100:.2f}%)')
-            ax.set_ylabel(f'PC2 ({explained_variance_ratio[1] * 100:.2f}%)')
-            ax.set_title(f'Projection des liaisons électrodes dans le plan principal ({(explained_variance_ratio[0]+explained_variance_ratio[1]) * 100:.2f}%)\n{freq}')
-            plt.grid()
-            plt.show()
-                
-            
-            # Projection des individus dans l'espace principal (3D)
-            fig = plt.figure(figsize=(10, 8))
-            ax = fig.add_subplot(111, projection='3d')
-            ax.scatter(data_pca[:, 0], data_pca[:, 1], data_pca[:, 2], c='blue', edgecolors='k', alpha=0.7)
+    if acp_explo ==True:
+        from sklearn.decomposition import PCA
+    
+        do_ACP_for = 'patient' # 'patient' ou 'electrode' selon la variable à explorer (quand on projette les patients on peut voir les classes)
         
-            # Titres et labels
-            ax.set_xlabel(f'PC1 ({explained_variance_ratio[0] * 100:.2f}%)')
-            ax.set_ylabel(f'PC2 ({explained_variance_ratio[1] * 100:.2f}%)')
-            ax.set_zlabel(f'PC3 ({explained_variance_ratio[2] * 100:.2f}%)')
-            ax.set_title(f'Projection des des liaisons électrodes dans l\'espace principal ({(explained_variance_ratio[0]+explained_variance_ratio[1]+explained_variance_ratio[2]) * 100:.2f}%)\n{freq}')
-        
-            plt.show()
-        
-            do_circle = False
-            if do_circle == True:
-                fig, ax = plt.subplots(figsize=(8, 8))
-                for i in range(corr.shape[1]):
-                    ax.arrow(0, 0, pca.components_[0, i], pca.components_[1, i], head_width=0.05, head_length=0.05, fc='k', ec='k')
-                    #ax.text(pca.components_[0, i] * 1.1, pca.components_[1, i] * 1.1, X.columns[i], color='black', ha='center', va='center')
+        if do_ACP_for == 'electrode':
+    
+            for freq in greek:
+                data = dict_pca[freq]
+                data_norm = (data-data.mean())/data.std()
                 
-                # Tracer le cercle unitaire
-                circle = plt.Circle((0, 0), 1, color='blue', fill=False)
-                ax.add_artist(circle)
+                corr = (data_norm).corr()
                 
-                # Limites du graphique
-                ax.set_xlim(-1, 1)
-                ax.set_ylim(-1, 1)
-                ax.set_aspect('equal', 'box')
+                pca = PCA(n_components=5)
+                pca.fit(corr)
                 
-                # Ajouter des labels et un titre
-                ax.set_xlabel('Composante principale 1')
-                ax.set_ylabel('Composante principale 2')
-                ax.set_title('Cercle de corrélation')
+                data_pca = pca.fit_transform(corr)
                 
-                plt.grid(True)
+                """
+                #plot variance cumulée
+                exp_var= (pca.explained_variance_ratio_)
+                plt.plot(np.insert(np.cumsum(exp_var),0,0), color='red')
+                plt.bar(np.arange(1,len(exp_var)+1,1),np.cumsum(exp_var))
+                #plt.axhline(.9, linestyle='--', color= 'gray')
+                plt.xlabel('valeurs propres')
+                plt.ylabel('%')
+                plt.title(f'{freq}-variance expliquée cumulée')
                 plt.show()
-         
+                """
+                explained_variance_ratio = pca.explained_variance_ratio_  # Variance expliquée par chaque composante
+                fig, ax = plt.subplots(figsize=(8, 6))
                 
-    else: #ACP Projection des patients dans le plan principal
-        for freq in greek:
-            data = dict_pca[freq].T
-            data_norm = (data-data.mean())/data.std()
+                # Projection des individus sur les deux premières composantes principales
+                ax.scatter(data_pca[:, 0], data_pca[:, 1], c='blue', edgecolors='k', alpha=0.7)
+                
+                # Titres et labels
+                ax.set_xlabel(f'PC1 ({explained_variance_ratio[0] * 100:.2f}%)')
+                ax.set_ylabel(f'PC2 ({explained_variance_ratio[1] * 100:.2f}%)')
+                ax.set_title(f'Projection des liaisons électrodes dans le plan principal ({(explained_variance_ratio[0]+explained_variance_ratio[1]) * 100:.2f}%)\n{freq}')
+                plt.grid()
+                plt.show()
+                    
+                
+                # Projection des individus dans l'espace principal (3D)
+                fig = plt.figure(figsize=(10, 8))
+                ax = fig.add_subplot(111, projection='3d')
+                ax.scatter(data_pca[:, 0], data_pca[:, 1], data_pca[:, 2], c='blue', edgecolors='k', alpha=0.7)
             
-            corr = (data_norm).corr()
+                # Titres et labels
+                ax.set_xlabel(f'PC1 ({explained_variance_ratio[0] * 100:.2f}%)')
+                ax.set_ylabel(f'PC2 ({explained_variance_ratio[1] * 100:.2f}%)')
+                ax.set_zlabel(f'PC3 ({explained_variance_ratio[2] * 100:.2f}%)')
+                ax.set_title(f'Projection des des liaisons électrodes dans l\'espace principal ({(explained_variance_ratio[0]+explained_variance_ratio[1]+explained_variance_ratio[2]) * 100:.2f}%)\n{freq}')
             
-            pca = PCA(n_components=5)
-            pca.fit(corr)
+                plt.show()
             
-            data_pca = pca.fit_transform(corr)
-            
-          
-            
-            explained_variance_ratio = pca.explained_variance_ratio_  # Variance expliquée par chaque composante
-            fig, ax = plt.subplots(figsize=(8, 6))
-            
+                do_circle = False
+                if do_circle == True:
+                    fig, ax = plt.subplots(figsize=(8, 8))
+                    for i in range(corr.shape[1]):
+                        ax.arrow(0, 0, pca.components_[0, i], pca.components_[1, i], head_width=0.05, head_length=0.05, fc='k', ec='k')
+                        #ax.text(pca.components_[0, i] * 1.1, pca.components_[1, i] * 1.1, X.columns[i], color='black', ha='center', va='center')
+                    
+                    # Tracer le cercle unitaire
+                    circle = plt.Circle((0, 0), 1, color='blue', fill=False)
+                    ax.add_artist(circle)
+                    
+                    # Limites du graphique
+                    ax.set_xlim(-1, 1)
+                    ax.set_ylim(-1, 1)
+                    ax.set_aspect('equal', 'box')
+                    
+                    # Ajouter des labels et un titre
+                    ax.set_xlabel('Composante principale 1')
+                    ax.set_ylabel('Composante principale 2')
+                    ax.set_title('Cercle de corrélation')
+                    
+                    plt.grid(True)
+                    plt.show()
+             
+                    
+        else: #ACP Projection des patients dans le plan principal
+            for freq in greek:
+                data = dict_pca[freq].T
+                data_norm = (data-data.mean())/data.std()
+                
+                corr = (data_norm).corr()
+                
+                pca = PCA(n_components=5)
+                pca.fit(corr)
+                
+                data_pca = pca.fit_transform(corr)
+                
+              
+                
+                explained_variance_ratio = pca.explained_variance_ratio_  # Variance expliquée par chaque composante
+                fig, ax = plt.subplots(figsize=(8, 6))
+                
+        
+                ax.scatter(data_pca[0:27, 0], data_pca[0:27, 1], c='blue', edgecolors='k', label='AD', alpha=0.7)
+                ax.scatter(data_pca[28:68, 0], data_pca[28:68, 1], c='yellow', edgecolors='k', label='MCI', alpha=0.7)
+                ax.scatter(data_pca[68:, 0], data_pca[68:, 1], c='green', edgecolors='k', label='SCI', alpha=0.7)
+                # Titres et labels
+                ax.set_xlabel(f'PC1 ({explained_variance_ratio[0] * 100:.2f}%)')
+                ax.set_ylabel(f'PC2 ({explained_variance_ratio[1] * 100:.2f}%)')
+                ax.set_title(f'Projection des individus (patients) dans le plan principal ({(explained_variance_ratio[0]+explained_variance_ratio[1]) * 100:.2f}%)\n{freq}')
+                plt.grid()
+                plt.legend()
+                plt.show()
+                
+                
+                fig = plt.figure(figsize=(12, 8))
+                ax = fig.add_subplot(111, projection='3d')
     
-            ax.scatter(data_pca[0:27, 0], data_pca[0:27, 1], c='blue', edgecolors='k', label='AD', alpha=0.7)
-            ax.scatter(data_pca[28:68, 0], data_pca[28:68, 1], c='yellow', edgecolors='k', label='MCI', alpha=0.7)
-            ax.scatter(data_pca[68:, 0], data_pca[68:, 1], c='green', edgecolors='k', label='SCI', alpha=0.7)
-            # Titres et labels
-            ax.set_xlabel(f'PC1 ({explained_variance_ratio[0] * 100:.2f}%)')
-            ax.set_ylabel(f'PC2 ({explained_variance_ratio[1] * 100:.2f}%)')
-            ax.set_title(f'Projection des individus (patients) dans le plan principal ({(explained_variance_ratio[0]+explained_variance_ratio[1]) * 100:.2f}%)\n{freq}')
-            plt.grid()
-            plt.legend()
-            plt.show()
-            
-            
-            fig = plt.figure(figsize=(12, 8))
-            ax = fig.add_subplot(111, projection='3d')
+        
+                ax.scatter(data_pca[0:28, 0], data_pca[0:28, 1], data_pca[0:28, 2], c='blue', edgecolors='k', label='AD', alpha=0.7)
+                ax.scatter(data_pca[29:70, 0], data_pca[29:70, 1],  data_pca[29:70, 2], c='yellow', edgecolors='k', label='MCI', alpha=0.7)
+                ax.scatter(data_pca[71:, 0], data_pca[71:, 1], data_pca[71:, 2], c='green', edgecolors='k', label='SCI', alpha=0.7)
+                # Titres et labels
+                ax.set_xlabel(f'PC1 ({explained_variance_ratio[0] * 100:.2f}%)')
+                ax.set_ylabel(f'PC2 ({explained_variance_ratio[1] * 100:.2f}%)')
+                ax.set_zlabel(f'PC3 ({explained_variance_ratio[2] * 100:.2f}%)')
+                ax.set_title(f'Projection des individus (patients) dans l\'espace principal ({(explained_variance_ratio[0]+explained_variance_ratio[1]+explained_variance_ratio[2]) * 100:.2f}%)\n{freq}')
+                plt.grid()
+                plt.legend()
+                plt.show()
+    
+#%% SVM on ACP
+from sklearn.decomposition import PCA
+import pandas as pd
+from sklearn.svm import SVC
+from sklearn.model_selection import LeaveOneOut
+from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import LabelEncoder
 
+
+labels = ['AD'] * 28 + ['MCI'] * 40 + ['SCI'] * 22
+label_encoder = LabelEncoder()
+labels_encoded = label_encoder.fit_transform(labels)
+
+
+classeDis1 = 'SCI'
+
+
+classeDis2 = 'AD'
+
+
+res_svm  = dict()
+res_svm1_byFreq = {} 
+for classeDis1 in ['AD', 'MCI', 'SCI']:
+    print('\n' + classeDis1)
+    res_svm1 = []
+
+    # Boucle sur les fréquences pour appliquer la transformation PCA
+    for freq in greek:
+        data_pca = dict_pca[freq].T
+        data_norm = (data_pca - data_pca.mean()) / data_pca.std()
     
-            ax.scatter(data_pca[0:28, 0], data_pca[0:28, 1], data_pca[0:28, 2], c='blue', edgecolors='k', label='AD', alpha=0.7)
-            ax.scatter(data_pca[29:70, 0], data_pca[29:70, 1],  data_pca[29:70, 2], c='yellow', edgecolors='k', label='MCI', alpha=0.7)
-            ax.scatter(data_pca[71:, 0], data_pca[71:, 1], data_pca[71:, 2], c='green', edgecolors='k', label='SCI', alpha=0.7)
-            # Titres et labels
-            ax.set_xlabel(f'PC1 ({explained_variance_ratio[0] * 100:.2f}%)')
-            ax.set_ylabel(f'PC2 ({explained_variance_ratio[1] * 100:.2f}%)')
-            ax.set_zlabel(f'PC3 ({explained_variance_ratio[2] * 100:.2f}%)')
-            ax.set_title(f'Projection des individus (patients) dans l\'espace principal ({(explained_variance_ratio[0]+explained_variance_ratio[1]+explained_variance_ratio[2]) * 100:.2f}%)\n{freq}')
-            plt.grid()
-            plt.legend()
-            plt.show()
     
+        corr = data_norm.corr()
+    
+    
+        pca = PCA(n_components=5).set_output(transform='pandas')
+        data_pca_transformed = pca.fit_transform(corr)
+        
+
+        index = [label.split('_')[0] for label in data_pca_transformed.index]        
+        data_pca_transformed.index = index
+        
+        
+    
+        ############    Premier SVM (MCI vs Autres classes)    ##############  
+    
+        binary_labels = [1 if label == classeDis1 else 0 for label in index]
+        data_pca_svm1 = data_pca_transformed.copy()
+        data_pca_svm1.index = binary_labels
+        svm = SVC(kernel='linear')  # Vous pouvez choisir un autre noyau si nécessaire
+        loo = LeaveOneOut()
+        accuracies = []
+    
+    
+        for train_index, test_index in loo.split(data_pca_svm1):
+            X_train, X_test = data_pca_svm1.iloc[train_index], data_pca_svm1.iloc[test_index]
+            y_train, y_test = data_pca_svm1.index[train_index], data_pca_svm1.index[test_index]
+    
+            svm.fit(X_train, y_train)
+            y_pred = svm.predict(X_test)
+    
+            accuracies.append(accuracy_score([y_test], [y_pred]))
+    
+        mean_accuracy = np.mean(accuracies)
+        print(f"Mean accuracy with LOOCV for {freq}: {mean_accuracy:.2f}")
+        
+        pred = svm.predict(data_pca_svm1)
+        res_svm1.append(pred)
+        
+        print(f'accuracy on prediction SVM1 ({classeDis1}): {(np.sum(pred==binary_labels)/90)*100:.0f} %')
+        res_svm[classeDis1] = res_svm1
+    
+    pred_svm1_byFreq = np.sum(np.array(res_svm1), axis=0)
+    pred_svm1_byFreq = [0 if pred <= 1 else 1 for pred in pred_svm1_byFreq]  
+    
+    res_svm1_byFreq[classeDis1] = pred_svm1_byFreq
+    
+    accuracy_svm1_byFreq = accuracy_score(binary_labels, pred_svm1_byFreq)
+    print(f"accuracy SVM1 : {accuracy_svm1_byFreq*100:.1f}%")
+    
+
+
+
+
+    #%%
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+
+   
+
 #%%
 
-
-
-    
-            
 
 
 
