@@ -18,6 +18,13 @@ from scipy.io import loadmat
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os 
+from sklearn.svm import SVC
+from sklearn.model_selection import LeaveOneOut
+from sklearn.metrics import accuracy_score
+from sklearn.decomposition import PCA
+from sklearn.model_selection import StratifiedKFold
+
+
 
 def load_data(greek, state):
     data_dict = dict()
@@ -254,6 +261,41 @@ def get_summary(greek, state, by_patient=False):
                    print(f'      patient {i+1:3d} mean: {np.mean(data_patient):.3f}   | std: {np.std(data_patient):.3f}')
            print()
        print("=====================================")
+       
+       
+       
+
+def proj_acp_4freq(dict_pca, greek=['ALPHA', 'BETA', 'DELTA', 'THETA']):
+    #récupérer les projections des individus pour les 4 acp des fréquences
+    variable_acp = list()
+    for state in ['AD', 'MCI', 'SCI']:
+        for freq in greek:
+            data_pca = dict_pca[freq].T
+            data_norm = (data_pca - data_pca.mean()) / data_pca.std()
+        
+        
+            corr = data_norm.corr()
+        
+        
+            pca = PCA(n_components=5).set_output(transform='pandas')
+            data_pca_transformed = pca.fit_transform(corr)
+            
+    
+            index = [label.split('_')[0] for label in data_pca_transformed.index]        
+            data_pca_transformed.index = index
+            data_pca_transformed.columns = [f"c{_}" for _ in range(1,len(data_pca_transformed.columns)+1)]
+            data_pca_transformed.columns = [col+"_"+freq for col in data_pca_transformed.columns]
+            
+            variable_acp.append(data_pca_transformed)
+       
+    
+    
+    
+    
+    
+    #coordonnées dans l'espace latent à utiliser pour le double SVM       
+    proj_pca_concat = pd.concat(variable_acp, axis = 1)
+    return proj_pca_concat
 
 #%%
 path = './EpEn Data_sans diag_norm_90 sujets/EpEn Data_sans diag_norm_90 sujets'
@@ -282,11 +324,11 @@ if __name__ == '__main__':
     
     #plot_histo(greek, state)
 
-    plot_scatter_mean_std(greek, state)
+    #plot_scatter_mean_std(greek, state)
 
     #dict_mean = get_mean_by_electrod(greek, state)  
     
-    mean_electrod = get_mean_electrod(greek, state)
+    #mean_electrod = get_mean_electrod(greek, state)
     
     #mean_vectors_by_state = group_mean_vectors_as_matrices(greek, state)
     
@@ -300,7 +342,7 @@ if __name__ == '__main__':
     acp_explo = False
     
     if acp_explo ==True:
-        from sklearn.decomposition import PCA
+
     
         do_ACP_for = 'patient' # 'patient' ou 'electrode' selon la variable à explorer (quand on projette les patients on peut voir les classes)
         
@@ -427,113 +469,61 @@ if __name__ == '__main__':
                 plt.show()
     
 
+#%% SVM sur les projections des ACPs des 4 fréquences    
 
+    latent_4freq = proj_acp_4freq(dict_pca)
+    index = latent_4freq.index
 
-
-
-
-#%% SVM on ACP    
-
-
-
-
-
-
-
-# -----------------------------------------------------------------------------
-# -----------------------------------NON VIABLE--------------------------------
-# -----------------------------------------------------------------------------
-
-#                                 CODE A CORRIGER
-
-from sklearn.decomposition import PCA
-import pandas as pd
-from sklearn.svm import SVC
-from sklearn.model_selection import LeaveOneOut
-from sklearn.metrics import accuracy_score
-from sklearn.preprocessing import LabelEncoder
-
-
-labels = ['AD'] * 28 + ['MCI'] * 40 + ['SCI'] * 22
-label_encoder = LabelEncoder()
-labels_encoded = label_encoder.fit_transform(labels)
-
-
-classeDis1 = 'SCI'
-
-
-classeDis2 = 'AD'
-
-
-res_svm  = dict()
-res_svm1_byFreq = {} 
-for classeDis1 in ['AD', 'MCI', 'SCI']:
-    print('\n' + classeDis1)
-    res_svm1 = []
-
-    # Boucle sur les fréquences pour appliquer la transformation PCA
-    for freq in greek:
-        data_pca = dict_pca[freq].T
-        data_norm = (data_pca - data_pca.mean()) / data_pca.std()
+    # 1er SVM 
+    equilibrer_prop_classe = True #si True alors stratifid k-fold pour équilibrer les classes du 1er SVM sinon LOOCV
     
-    
-        corr = data_norm.corr()
-    
-    
-        pca = PCA(n_components=5).set_output(transform='pandas')
-        data_pca_transformed = pca.fit_transform(corr)
+    if equilibrer_prop_classe == False:
+        for state in ['AD', 'MCI', 'SCI']:
+            binary_labels = [1 if label == state else 0 for label in index]
+            copy_latent_4freq = latent_4freq.copy()
+            copy_latent_4freq.index = binary_labels
+            svm = SVC(kernel='linear')
+            loo = LeaveOneOut()
+            accuracies = []
+            
+            for train_index, test_index in loo.split(copy_latent_4freq):
+                X_train, X_test = copy_latent_4freq.iloc[train_index], copy_latent_4freq.iloc[test_index]
+                y_train, y_test = copy_latent_4freq.index[train_index], copy_latent_4freq.index[test_index]
+            
+                svm.fit(X_train, y_train)
+                
+                y_pred = svm.predict(X_test)
+                
+                
+                accuracies.append(accuracy_score([y_test], [y_pred]))
+            
+            mean_accuracy = np.mean(accuracies)
+            print(f"Mean accuracy with LOOCV (Classe discriminante : {state}) : {mean_accuracy:.2f}")
+
+    elif equilibrer_prop_classe == True:
+        for state in ['AD', 'MCI', 'SCI']:
+            binary_labels = [1 if label == state else 0 for label in index]
+            copy_latent_4freq = latent_4freq.copy()
+            copy_latent_4freq['label'] = binary_labels
         
-
-        index = [label.split('_')[0] for label in data_pca_transformed.index]        
-        data_pca_transformed.index = index
+            svm = SVC(kernel='linear')
+            skf = StratifiedKFold(n_splits=5)
+            accuracies = []
         
+            for train_index, test_index in skf.split(copy_latent_4freq.iloc[:, :-1], copy_latent_4freq['label']):
+                X_train, X_test = copy_latent_4freq.iloc[train_index, :-1], copy_latent_4freq.iloc[test_index, :-1]
+                y_train, y_test = copy_latent_4freq.iloc[train_index, -1], copy_latent_4freq.iloc[test_index, -1]
         
-    
-        ############    Premier SVM (classeDis1 vs Autres classes)    ##############  
-    
-        binary_labels = [1 if label == classeDis1 else 0 for label in index]
-        data_pca_svm1 = data_pca_transformed.copy()
-        data_pca_svm1.index = binary_labels
-        svm = SVC(kernel='linear')  # Vous pouvez choisir un autre noyau si nécessaire
-        loo = LeaveOneOut()
-        accuracies = []
-    
-    
-        for train_index, test_index in loo.split(data_pca_svm1):
-            X_train, X_test = data_pca_svm1.iloc[train_index], data_pca_svm1.iloc[test_index]
-            y_train, y_test = data_pca_svm1.index[train_index], data_pca_svm1.index[test_index]
-    
-            svm.fit(X_train, y_train)
-            y_pred = svm.predict(X_test)
-    
-            accuracies.append(accuracy_score([y_test], [y_pred]))
-    
-        mean_accuracy = np.mean(accuracies)
-        print(f"Mean accuracy with LOOCV for {freq}: {mean_accuracy:.2f}")
+                svm.fit(X_train, y_train)
+                y_pred = svm.predict(X_test)
         
-        pred = svm.predict(data_pca_svm1)
-        res_svm1.append(pred)
+                accuracies.append(accuracy_score(y_test, y_pred))
         
-        print(f'accuracy on prediction SVM1 ({classeDis1}): {(np.sum(pred==binary_labels)/90)*100:.0f} %')
-        res_svm[classeDis1] = res_svm1
+            mean_accuracy = np.mean(accuracies)
+            print(f"Mean accuracy with StratifiedKFold (Classe discriminante : {state}) : {mean_accuracy:.2f}")
     
-    pred_svm1_byFreq = np.sum(np.array(res_svm1), axis=0)
-    pred_svm1_byFreq = [0 if pred <= 1 else 1 for pred in pred_svm1_byFreq]  
-    
-    res_svm1_byFreq[classeDis1] = pred_svm1_byFreq
-    
-    accuracy_svm1_byFreq = accuracy_score(binary_labels, pred_svm1_byFreq)
-    print(f"accuracy SVM1 : {accuracy_svm1_byFreq*100:.1f}%")
-    
+ #%%   
 
-
-
-
-  
-    
-    
-    
-    
     
     
     
