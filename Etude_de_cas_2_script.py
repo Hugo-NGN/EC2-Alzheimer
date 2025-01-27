@@ -426,7 +426,26 @@ if __name__ == '__main__':
                 plt.legend()
                 plt.show()
     
-#%% SVM on ACP
+
+
+
+
+
+
+#%% SVM on ACP    
+
+
+
+
+
+
+
+# -----------------------------------------------------------------------------
+# -----------------------------------NON VIABLE--------------------------------
+# -----------------------------------------------------------------------------
+
+#                                 CODE A CORRIGER
+
 from sklearn.decomposition import PCA
 import pandas as pd
 from sklearn.svm import SVC
@@ -470,7 +489,7 @@ for classeDis1 in ['AD', 'MCI', 'SCI']:
         
         
     
-        ############    Premier SVM (MCI vs Autres classes)    ##############  
+        ############    Premier SVM (classeDis1 vs Autres classes)    ##############  
     
         binary_labels = [1 if label == classeDis1 else 0 for label in index]
         data_pca_svm1 = data_pca_transformed.copy()
@@ -510,7 +529,7 @@ for classeDis1 in ['AD', 'MCI', 'SCI']:
 
 
 
-    #%%
+  
     
     
     
@@ -518,23 +537,6 @@ for classeDis1 in ['AD', 'MCI', 'SCI']:
     
     
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
-
-   
-
-#%%
 
 
 
