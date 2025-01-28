@@ -7,6 +7,7 @@ Created on Wed Jan  8 21:52:10 2025
 
 #%% TODO-list
 # TODO : mettre tous les résultats (ex: accuracy) en %
+# TODO : matrices corrélations 4x(4x435) (3 différentes pour les 3 états de maladie)
 # TODO : Vérifier structure des données en dimensions >2D
 # TODO : Implémenter méthode d'équilibre des classes (ex: SMOTE ...)
 # TODO :  Comparer performances sur variables espace latent de l'ACP vs variable "reelles"
@@ -263,7 +264,34 @@ def get_summary(greek, state, by_patient=False):
            print()
        print("=====================================")
        
-       
+def get_data_big_corr_matrix(data_dict, state={'AD':28, 'MCI':40, 'SCI':22}, greek=['ALPHA', 'BETA', 'DELTA', 'THETA'], plot_matrix = True):
+    data_big_correlation = {}
+    for dstate in state.keys():
+        data_state = []
+        for freq in greek:
+            for _ in range(len(data_dict[freq][dstate])):
+                if data_dict[freq][dstate][_].shape != (30,30):
+                    print(f"pb taille matrice {freq}, {state}, {_}")
+                else:
+                    vector = np.tril(data_dict[freq][dstate][_], k=-1)            
+                vector = np.tril(vector, k=-1)
+                indices = np.tril_indices(30, k=-1)
+                vector = vector[indices].flatten()
+                data_state.append(vector)
+        
+        # Concaténer les vecteurs
+        concatenated_data = np.vstack(data_state)
+        data_big_correlation[dstate] = concatenated_data
+        
+    
+    if plot_matrix == True:
+        for dstate in data_big_correlation.keys():
+            sns.heatmap(np.corrcoef(data_big_correlation[dstate]), cmap = 'gray' )
+            plt.title(f"Matrice de corrélation pour {dstate}")
+            plt.show()
+        
+        
+    return data_big_correlation     
        
 
 def proj_acp_4freq(dict_pca, greek=['ALPHA', 'BETA', 'DELTA', 'THETA']):
@@ -358,12 +386,15 @@ if __name__ == '__main__':
     
     #grouped_vectors_df = extract_and_group_triangular_matrices_df(greek, state)
     
+    data_big_correlation = get_data_big_corr_matrix(data_dict, greek=greek)
+
+    
     dict_pca = create_frequency_matrices_with_patient_labels(greek, state)
     
     
 
     #%% ACP
-    acp_explo = False
+    acp_explo = True
     
     if acp_explo ==True:
 
@@ -546,12 +577,5 @@ if __name__ == '__main__':
 
     
 #%%
-
-
-
-
-
-
-
 
 
