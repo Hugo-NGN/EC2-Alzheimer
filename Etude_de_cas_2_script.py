@@ -28,7 +28,7 @@ from sklearn.model_selection import StratifiedKFold
 
 
 
-def load_data(greek, state):
+def load_data(path, greek, state):
     data_dict = dict()
     
     for freq in greek:
@@ -50,22 +50,22 @@ def load_data(greek, state):
             data_dict[freq][condition] = data_list
     return data_dict
 
-def heat_map_fq_state(greek, state, annot = False, vmin=None, vmax=None):
+def heat_map_fq_state(data_dict, greek, state, annot = False, vmin=None, vmax=None):
     for i, _ in enumerate(data_dict[greek][state]):
         plt.title(f'Matrice {greek}-{state} {i+1}')
         sns.heatmap(_, annot=annot, cmap ='viridis', vmin=vmin, vmax=vmax)
         plt.show()
         
-def get_data_greek_state(greek, state):
+def get_data_greek_state(data_dict, greek, state):
     return (data_dict[greek][state])
 
 def get_upper(data_freq_dstate):
     return data_freq_dstate[np.triu_indices_from(data_freq_dstate, k=1)]
 
-def plot_histo(greek, state):
+def plot_histo(data_dict, greek, state):
     for freq in greek:
         for dstate in state.keys():
-            data = (get_data_greek_state(freq, dstate))
+            data = (get_data_greek_state(data_dict, freq, dstate))
             plt.figure(figsize=(20,10))
             for i, _ in enumerate(data):
                 plt.hist(get_upper(_), label= f'patient {i+1}', bins=30)
@@ -75,7 +75,7 @@ def plot_histo(greek, state):
             plt.show()
             
 
-def plot_scatter_mean_std(greek, state):
+def plot_scatter_mean_std(data_dict, greek, state):
     # Créer un graphique pour chaque fréquence
     for freq in greek:
         plt.figure(figsize=(15, 10))
@@ -85,7 +85,7 @@ def plot_scatter_mean_std(greek, state):
         
         # Pour chaque état dans state.keys()
         for i, dstate in enumerate(state.keys()):
-            data = get_data_greek_state(freq, dstate)
+            data = get_data_greek_state(data_dict, freq, dstate)
             
             # Tracer les patients pour chaque état avec une couleur différente
             for j, patient in enumerate(data):
@@ -102,14 +102,14 @@ def plot_scatter_mean_std(greek, state):
 
         plt.show()
         
-def plot_scatter_mean_std2(greek, state, group_states=False):
+def plot_scatter_mean_std2(data_dict, greek, state, group_states=False):
     colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k'][:len(greek)]
     for freq in greek:
         c = None
         if group_states:
             plt.figure(figsize=(15,10))
         for j, dstate in enumerate(state.keys()):
-            data = (get_data_greek_state(freq, dstate))
+            data = (get_data_greek_state(data_dict, freq, dstate))
             if not group_states:
                 plt.figure(figsize=(15,10))
             else:
@@ -139,14 +139,14 @@ def plot_scatter_mean_std2(greek, state, group_states=False):
             plt.show()
 
             
-def get_mean_electrod(greek, state):
+def get_mean_electrod(data_dict, greek, state):
     mean_results = {} 
 
     for freq in greek:
         mean_results[freq] = {} 
         for dstate in state.keys():
         
-            data = get_data_greek_state(freq, dstate)
+            data = get_data_greek_state(data_dict, freq, dstate)
             all_patients_data = []  
 
             for patient in data:
@@ -160,7 +160,7 @@ def get_mean_electrod(greek, state):
     return mean_results
 
                 
-def group_mean_vectors_as_matrices(greek, state):
+def group_mean_vectors_as_matrices(data_dict, greek, state):
     """
     Retourne la moyenne par électrode pour chaque patient (matrice 30x4) dans un dictionnaire avec pour clé les états
     """
@@ -170,7 +170,7 @@ def group_mean_vectors_as_matrices(greek, state):
         data_by_frequency = []  
         
         for freq in greek:
-            data = get_data_greek_state(freq, dstate)
+            data = get_data_greek_state(data_dict, freq, dstate)
             
             data_mean = [np.mean(patient, axis=0) for patient in data]
             data_by_frequency.append(data_mean)  
@@ -182,7 +182,7 @@ def group_mean_vectors_as_matrices(greek, state):
     
     return grouped_matrices
 
-def extract_and_group_triangular_matrices_df(greek, state):
+def extract_and_group_triangular_matrices_df(data_dict, greek, state):
     grouped_vectors = {}
     
     for dstate in state.keys():
@@ -191,7 +191,7 @@ def extract_and_group_triangular_matrices_df(greek, state):
         # Récupération des données par état et par fréquence
         data_by_frequency = {}
         for freq in greek:
-            data = get_data_greek_state(freq, dstate)  # Liste de matrices 30x30
+            data = get_data_greek_state(data_dict, freq, dstate)  # Liste de matrices 30x30
             triangular_vectors = [
                 patient[np.triu_indices_from(patient, k=1)]  # Extraire les valeurs triangulaires supérieures
                 for patient in data
@@ -210,7 +210,7 @@ def extract_and_group_triangular_matrices_df(greek, state):
     
     return grouped_vectors
 
-def create_frequency_matrices_with_patient_labels(greek, state):
+def create_frequency_matrices_with_patient_labels(data_dict, greek, state):
     """
     Crée un DataFrame par fréquence (ALPHA, BETA, ...) avec 435 colonnes pour les vecteurs triangulaires supérieurs,
     et les patients en lignes identifiés par un nom unique (ex: AD_1, MCI_1, SCI_1, etc.).
@@ -231,7 +231,7 @@ def create_frequency_matrices_with_patient_labels(greek, state):
         patient_labels = []
         
         for dstate, data_list in state.items():
-            data = get_data_greek_state(freq, dstate)  
+            data = get_data_greek_state(data_dict, freq, dstate)  
             for i, patient in enumerate(data):
                 triangular_vector = patient[np.triu_indices_from(patient, k=1)]
                 patient_vectors.append(triangular_vector)
@@ -246,10 +246,10 @@ def create_frequency_matrices_with_patient_labels(greek, state):
     return frequency_matrices
 
 
-def get_summary(greek, state, by_patient=False):
+def get_summary(data_dict, greek, state, by_patient=False):
    for freq in greek:
        for dstate in state.keys():
-           data = (get_data_greek_state(freq, dstate))
+           data = (get_data_greek_state(data_dict, freq, dstate))
            
            print(f'{freq}-{dstate} mean : ', np.mean(data))
            print(f'{freq}-{dstate} std : ', np.std(data))
@@ -372,7 +372,7 @@ def dict_to_df(dict_data):
     Converts a nested dictionary of data into a pandas DataFrame.
 
     Args:
-        dict_data (dict): The dictionary obtained with load_data.
+        dict_data (dict): The dictionary obtained with `load_data`.
 
     Returns:
         pd.DataFrame: A DataFrame with columns 'State', 'Patient', and 'Data', where 'Data' contains the 
@@ -408,7 +408,6 @@ def dict_to_df(dict_data):
     df = pd.DataFrame(result_list)
     return df
 
-    
 
 
 
@@ -424,9 +423,9 @@ if __name__ == '__main__':
     
     NB_ELEC = 30 #nombre d'électrode (constante)
 
-    data_dict = load_data(greek, state)
+    data_dict = load_data(path, greek, state)
     
-    #heat_map_fq_state('ALPHA', 'AD')
+    #heat_map_fq_state(data_dict, 'ALPHA', 'AD')
     
     #get_summary(greek, state)
     
