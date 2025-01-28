@@ -25,6 +25,7 @@ from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import accuracy_score
 from sklearn.decomposition import PCA
 from sklearn.model_selection import StratifiedKFold
+from xgboost import XGBClassifier
 
 
 
@@ -375,39 +376,102 @@ def dict_to_df(dict_data):
         dict_data (dict): The dictionary obtained with `load_data`.
 
     Returns:
-        pd.DataFrame: A DataFrame with columns 'State', 'Patient', and 'Data', where 'Data' contains the 
-                    concatenated upper triangular matrices for each patient and state.
+        pd.DataFrame: A DataFrame with columns "State", "Patient", and many columns for the data.
 
+    The data in the Dataframe has the nam "freq_elec1_elec2" where freq is the
+    frequency (ALPHA, BETA, etc.), and elec1 and elec2 are the electrode numbers.
     """
-    result_dict = {}
-
-    for freq, state_data in dict_data.items():
-        for state, patient_data in state_data.items():
-            for patient, data in enumerate(patient_data):
-                # Retrieve superiors triangular matrices from "Data"
-                data = data[np.triu_indices_from(data)]
-                key = (state, patient)
-
-                if key not in result_dict:
-                    result_dict[key] = []
-
-                result_dict[key].append(data)
-
-    # Concatenate the data arrays for each key
+    temp_list = []
+    count = 0
+    for freq, freq_data in dict_data.items():
+        for state, state_data in freq_data.items():
+            for i, patient_data in enumerate(state_data):
+                temp_dict = {
+                    "State": state,
+                    "Patient": f"{i+1}"
+                }
+                for elec1 in range(30):
+                    for elec2 in range(elec1+1, 30):
+                        key = f"{freq}_{elec1}_{elec2}"
+                        temp_dict[key] = patient_data[elec1, elec2]
+                temp_list.append(temp_dict)
+                count += 1
+    
     result_list = []
-    for key, data_list in result_dict.items():
-        state, patient = key
-        concatenated_data = np.concatenate(data_list)
-        result_list.append({
-            "State": state,
-            "Patient": patient,
-            "Data": concatenated_data
-        })
+    # For every patient (identified by the (State, Patient) pair), we make a single row
+    nb_patients = len(temp_list) // len(dict_data)
+    for i in range(0, nb_patients):
+        # We take the data for the 4 frequencies
+        list_dicts = [temp_list[i+j*90] for j in range(4)]
 
-    # Create a DataFrame from the result_list
-    df = pd.DataFrame(result_list)
-    return df
+        # We merge the dictionaries
+        merged_dict = {}
+        for d in list_dicts:
+            merged_dict.update(d)
 
+        result_list.append(merged_dict)
+
+    return pd.DataFrame(result_list)
+    
+
+def xgboost_analysis(data : dict | pd.DataFrame, verbose = False, k=5,
+                     mode = "total"):
+    """
+    Perform XGBoost classification with Stratified K-Fold cross-validation.
+
+    Args:
+        data (dict | pd.DataFrame): The input data with features and labels.
+        verbose (bool, optional): If True, print the mean accuracy. Default is False.
+        k (int, optional): The number of folds for Stratified K-Fold cross-validation. Default is 5.
+        mode (str, optional): The mode to use for the analysis ("total" to use on all of 
+            the data, or "pca" to use on the result of pca using proj_acp_4freq). Default is "total".
+    Returns:
+        tuple: A tuple containing:
+            - output (np.ndarray): The predicted labels for each instance in the data.
+            - mean_accuracy (float): The mean accuracy across all folds.
+
+    This runs both a training and testing phase for the XGBoost model using Stratified K-Fold cross-validation.
+    """
+    if data.__class__ == dict:
+        df_data = dict_to_df(data)
+    else:
+        # Copy the DataFrame to avoid modifying the original data
+        df_data = data.copy()
+
+    if mode == "pca":
+        # Make the index a column named "State"
+        df_data["State"] = df_data.index
+    else:
+        # Remove "Patient" column
+        df_data = df_data.drop(columns=["Patient"])
+    
+    
+
+    # Map labels to integers
+    corresp_y = {state: i for i, state in enumerate(df_data["State"].unique())}
+    df_data["State"] = df_data["State"].map(corresp_y)
+
+    model = XGBClassifier()
+    skf = StratifiedKFold(n_splits=k)
+    accuracies = []
+    output = np.zeros(len(df_data))
+
+    for train_index, test_index in skf.split(df_data.iloc[:, :-1], df_data["State"]):
+        X_train, X_test = df_data.iloc[train_index, :-1], df_data.iloc[test_index, :-1]
+        y_train, y_test = df_data.iloc[train_index]["State"], df_data.iloc[test_index]["State"]
+
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+
+        output[test_index] = y_pred
+        accuracies.append(accuracy_score(y_test, y_pred))
+
+    mean_accuracy = np.mean(accuracies)
+
+    if verbose:
+        print(f"Mean accuracy with StratifiedKFold (mode {mode.capitalize()}): {mean_accuracy:.2f}")
+
+    return output, mean_accuracy
 
 
 
