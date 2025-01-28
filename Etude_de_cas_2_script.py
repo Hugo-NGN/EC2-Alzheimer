@@ -402,7 +402,7 @@ def dict_to_df(dict_data):
     nb_patients = len(temp_list) // len(dict_data)
     for i in range(0, nb_patients):
         # We take the data for the 4 frequencies
-        list_dicts = [temp_list[i+j*90] for j in range(4)]
+        list_dicts = [temp_list[i+j*nb_patients] for j in range(4)]
 
         # We merge the dictionaries
         merged_dict = {}
@@ -444,6 +444,8 @@ def xgboost_analysis(data : dict | pd.DataFrame, verbose = False, k=5,
     else:
         # Remove "Patient" column
         df_data = df_data.drop(columns=["Patient"])
+        # Make the "State" column the last one (prevents it from being used as a feature)
+        df_data = df_data[[col for col in df_data.columns if col != "State"] + ["State"]]
     
     
 
