@@ -24,7 +24,7 @@ from sklearn.svm import SVC
 from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import accuracy_score
 from sklearn.decomposition import PCA
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import StratifiedKFold, KFold
 from xgboost import XGBClassifier
 
 
@@ -415,7 +415,7 @@ def dict_to_df(dict_data):
     
 
 def xgboost_analysis(data : dict | pd.DataFrame, verbose = False, k=5,
-                     mode = "total"):
+                     mode = "total", use_stratified_kfold = True):
     """
     Perform XGBoost classification with Stratified K-Fold cross-validation.
 
@@ -425,6 +425,8 @@ def xgboost_analysis(data : dict | pd.DataFrame, verbose = False, k=5,
         k (int, optional): The number of folds for Stratified K-Fold cross-validation. Default is 5.
         mode (str, optional): The mode to use for the analysis ("total" to use on all of 
             the data, or "pca" to use on the result of pca using proj_acp_4freq). Default is "total".
+        use_stratified_kfold (bool, optional): If True, use Stratified K-Fold cross-validation. Default is True.
+    
     Returns:
         tuple: A tuple containing:
             - output (np.ndarray): The predicted labels for each instance in the data.
@@ -454,7 +456,11 @@ def xgboost_analysis(data : dict | pd.DataFrame, verbose = False, k=5,
     df_data["State"] = df_data["State"].map(corresp_y)
 
     model = XGBClassifier()
-    skf = StratifiedKFold(n_splits=k)
+    if use_stratified_kfold:
+        skf = StratifiedKFold(n_splits=k)
+    else:
+        # Use K-Fold cross-validation
+        skf = KFold(n_splits=k)
     accuracies = []
     output = np.zeros(len(df_data))
 
@@ -517,7 +523,7 @@ if __name__ == '__main__':
     #%% ACP
     acp_explo = True
     
-    if acp_explo ==True:
+    if acp_explo == True:
 
     
         do_ACP_for = 'patient' # 'patient' ou 'electrode' selon la variable à explorer (quand on projette les patients on peut voir les classes)
@@ -645,7 +651,7 @@ if __name__ == '__main__':
                 plt.show()
     
 
-#%% Exploration pour le choix de la classe discriminante pour le SVM n°1 (sur les projections des ACPs des 4 fréquences)
+    #%% Exploration pour le choix de la classe discriminante pour le SVM n°1 (sur les projections des ACPs des 4 fréquences)
 
     latent_4freq = proj_acp_4freq(dict_pca)
     index = latent_4freq.index
