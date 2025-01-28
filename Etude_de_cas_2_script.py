@@ -324,7 +324,19 @@ def proj_acp_4freq(dict_pca, greek=['ALPHA', 'BETA', 'DELTA', 'THETA']):
 
 
 
-def svm_skf(data, class_svm, print_res = False):
+def svm_skf(data, class_svm, verbose = False):
+    """
+    Perform SVM classification with Stratified K-Fold cross-validation.
+
+    Args:
+        data (pd.DataFrame): The input data with features and labels.
+        class_svm (str or int): The class label to be used as the positive class for binary classification.
+        verbose (bool, optional): If True, print the mean accuracy. Default is False.
+    Returns:
+        tuple: A tuple containing:
+            - output (np.ndarray): The predicted labels for each instance in the data.
+            - mean_accuracy (float): The mean accuracy across all folds.
+    """
     index = data.index
     
     binary_labels = [1 if label == class_svm else 0 for label in index]
@@ -349,10 +361,54 @@ def svm_skf(data, class_svm, print_res = False):
     mean_accuracy = np.mean(accuracies)
 
 
-    if print_res:
+    if verbose:
         print(f"Mean accuracy with StratifiedKFold (Classe discriminante : {state}) : {mean_accuracy:.2f}")
     
     return output, mean_accuracy
+
+
+def dict_to_df(dict_data):
+    """
+    Converts a nested dictionary of data into a pandas DataFrame.
+
+    Args:
+        dict_data (dict): The dictionary obtained with load_data.
+
+    Returns:
+        pd.DataFrame: A DataFrame with columns 'State', 'Patient', and 'Data', where 'Data' contains the 
+                    concatenated upper triangular matrices for each patient and state.
+
+    """
+    result_dict = {}
+
+    for freq, state_data in dict_data.items():
+        for state, patient_data in state_data.items():
+            for patient, data in enumerate(patient_data):
+                # Retrieve superiors triangular matrices from "Data"
+                data = data[np.triu_indices_from(data)]
+                key = (state, patient)
+
+                if key not in result_dict:
+                    result_dict[key] = []
+
+                result_dict[key].append(data)
+
+    # Concatenate the data arrays for each key
+    result_list = []
+    for key, data_list in result_dict.items():
+        state, patient = key
+        concatenated_data = np.concatenate(data_list)
+        result_list.append({
+            "State": state,
+            "Patient": patient,
+            "Data": concatenated_data
+        })
+
+    # Create a DataFrame from the result_list
+    df = pd.DataFrame(result_list)
+    return df
+
+    
 
 
 
