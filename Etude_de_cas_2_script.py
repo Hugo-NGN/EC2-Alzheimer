@@ -26,6 +26,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.decomposition import PCA
 from sklearn.model_selection import StratifiedKFold, KFold
 from xgboost import XGBClassifier
+from imblearn.over_sampling import RandomOverSampler
 
 
 
@@ -464,9 +465,13 @@ def xgboost_analysis(data : dict | pd.DataFrame, verbose = False, k=5,
     accuracies = []
     output = np.zeros(len(df_data))
 
+
     for train_index, test_index in skf.split(df_data.iloc[:, :-1], df_data["State"]):
         X_train, X_test = df_data.iloc[train_index, :-1], df_data.iloc[test_index, :-1]
         y_train, y_test = df_data.iloc[train_index]["State"], df_data.iloc[test_index]["State"]
+        
+        ros = RandomOverSampler(random_state=42)
+        X_train, y_train = ros.fit_resample(X_train, y_train)
 
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
