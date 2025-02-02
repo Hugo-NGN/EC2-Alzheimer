@@ -27,7 +27,7 @@ from sklearn.decomposition import PCA
 from sklearn.model_selection import StratifiedKFold, KFold
 from xgboost import XGBClassifier
 from imblearn.over_sampling import RandomOverSampler
-
+import random
 
 
 def load_data(path, greek, state):
@@ -489,6 +489,17 @@ def xgboost_analysis(data : dict | pd.DataFrame, verbose = False, k=5,
     return output, mean_accuracy
 
 
+def mci_aleatoires(liste_entree, nombre_mci=28):
+    mci_elements = [element for element in liste_entree if element.startswith('MCI')]
+
+    mci_aleatoires = random.sample(mci_elements, nombre_mci)
+
+    ad_sci_elements = [element for element in liste_entree if element.startswith('AD') or element.startswith('SCI')]
+
+    resultat = ad_sci_elements + mci_aleatoires
+
+    return resultat
+        
 
 #%%
 path = './EpEn Data_sans diag_norm_90 sujets/EpEn Data_sans diag_norm_90 sujets'
@@ -678,168 +689,70 @@ if __name__ == '__main__':
                 plt.show()
     
 
-    #%% Exploration pour le choix de la classe discriminante pour le SVM n°1 (sur les projections des ACPs des 4 fréquences)
+    #%% SVM comparatif sur Beta 
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.metrics import confusion_matrix, classification_report
 
-    latent_4freq = proj_acp_4freq(dict_pca)
-    index = latent_4freq.index
-
-    states = ['AD', 'MCI', 'SCI']
-    pairs_states = list(itertools.permutations(states, 2))
+    #1 ACP sur BETA
+    
+    beta_data = dict_pca["BETA"].T
+    beta_data_norm = (beta_data-beta_data.mean())/beta_data.std()
+    
+    beta_corr = (beta_data_norm).corr()
+    
+    beta_pca = PCA(n_components=2)
+    
+    beta_pca.fit(beta_corr)
+    beta_pca.set_output(transform = "pandas")
+    beta_data_pca = beta_pca.fit_transform(beta_corr)
     
     
-    for pair in pairs_states:
-        class_svm1 = pair[0]
-        class_svm2 = pair[1]
-        
-        
-        # 1er SVM:
-        output_svm1, svm1_accuracy = svm_skf(latent_4freq, class_svm1)
-        
-       
-        #Preparation entrée du 2e SVM
-        latent_post_svm1 = pd.concat([latent_4freq, pd.DataFrame(output_svm1, columns=['label_svm1'], index=latent_4freq.index)], axis=1)
-        
-        latent_post_svm1['label_svm2'] =  [1 if label == class_svm2 else 0 for label in latent_post_svm1.index]
-        
-        latent_post_svm1 = latent_post_svm1[latent_post_svm1['label_svm1']==0]
+
+    liste_individus = beta_data.T.index
+    liste_individus_equilibre = mci_aleatoires(liste_individus)
     
-        latent_post_svm1.drop('label_svm1', axis=1, inplace = True)
-        
-        
-        print(f'Classe 1: {class_svm1}         ||          Classe 2: {class_svm2}')
-        print('------------------------------------------------------------------')
-        print(f'Accuracy en sortie du 1e SVM (par rapport à: {class_svm1})  : {svm1_accuracy*100:.2f} %')
+    beta_data_pca_filtre = beta_data_pca.loc[liste_individus_equilibre]
     
+    def assign_class(index):
+        if index.startswith("AD"):
+            return "AD"
+        elif index.startswith("MCI"):
+            return "MCI"
+        elif index.startswith("SCI"):
+            return "SCI"
+        else:
+            return "Unknown"
+
+    # Ajout de la colonne classe aux individus sélectionnés
+    beta_data_pca_filtre = beta_data_pca.loc[liste_individus_equilibre].copy()
+    beta_data_pca_filtre["classe"] = beta_data_pca_filtre.index.map(assign_class)
     
-        
-        
-        # 2e SVM:
-        output_svm2, svm2_accuracy = svm_skf(latent_post_svm1.iloc[:,:-1], class_svm2)
-        
-        latent_post_svm2 = pd.concat([latent_post_svm1, pd.DataFrame(output_svm2, columns=['label_svm2_pred'], index=latent_post_svm1.index)], axis=1)
-        
-        latent_post_svm2['label_svm2'] =  [1 if label == class_svm2 else 0 for label in latent_post_svm1.index]
-        
-        #latent_post_svm2 = latent_post_svm1[latent_post_svm1['label_svm2']==0]
-        #latent_post_svm2.drop('label_svm2', axis=1, inplace = True)
-        
-        
-        print('------------------------------------------------------------------')
-        print(f'Accuracy en sortie du 2e SVM (par rapport à: {class_svm2})  : {svm2_accuracy*100:.2f} %')
-        print('------------------------------------------------------------------')
-        print('\n')
-
+    # Séparer les features et labels
+    X_train = beta_data_pca_filtre.drop(columns=["classe"])
+    y_train = beta_data_pca_filtre["classe"]
     
-#%%
-from sklearn.metrics import confusion_matrix
-import seaborn as sns
-import matplotlib.pyplot as plt
-from imblearn.over_sampling import RandomOverSampler
-
-
-def svm_skf(data, class_to_distinguish):
-    X = data.iloc[:, :-1]
-    y = [1 if label == class_to_distinguish else 0 for label in data.index]
-
-    svm = SVC(kernel='linear')
-    skf = StratifiedKFold(n_splits=5)
-    accuracies = []
-    all_y_test = []
-    all_y_pred = []
-
-    for train_index, test_index in skf.split(X, y):
-        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
-        y_train, y_test = np.array(y)[train_index], np.array(y)[test_index]
-
-        # Utiliser RandomOverSampler pour équilibrer les classes dans le jeu d'entraînement
-        ros = RandomOverSampler(random_state=42)
-        X_train_res, y_train_res = ros.fit_resample(X_train, y_train)
-
-        # Entraîner le modèle SVM
-        svm.fit(X_train_res, y_train_res)
-
-        # Prédire les labels pour le jeu de test
-        y_pred = svm.predict(X_test)
-
-        # Calculer la précision
-        accuracies.append(accuracy_score(y_test, y_pred))
-
-        # Stocker les vrais labels et les prédictions
-        all_y_test.extend(y_test)
-        all_y_pred.extend(y_pred)
-
-    mean_accuracy = np.mean(accuracies)
-    return all_y_pred, mean_accuracy, all_y_test, all_y_pred
-
-
-#for pair in pairs_states:
-for pair in [('SCI', 'AD')]:
-
-    class_svm1 = pair[0]
-    class_svm2 = pair[1]
-
-    # 1er SVM:
-    output_svm1, svm1_accuracy, y_test_svm1, y_pred_svm1 = svm_skf(latent_4freq, class_svm1)
-
-    # Préparation entrée du 2e SVM
-    latent_post_svm1 = pd.concat([latent_4freq, pd.DataFrame(output_svm1, columns=['label_svm1'], index=latent_4freq.index)], axis=1)
-    latent_post_svm1['label_svm2'] = [1 if label == class_svm2 else 0 for label in latent_post_svm1.index]
-    latent_post_svm1 = latent_post_svm1[latent_post_svm1['label_svm1'] == 0]
-    latent_post_svm1.drop('label_svm1', axis=1, inplace=True)
-
-    print(f'Classe 1: {class_svm1}         ||          Classe 2: {class_svm2}')
-    print('------------------------------------------------------------------')
-    print(f'Accuracy en sortie du 1e SVM (par rapport à: {class_svm1})  : {svm1_accuracy * 100:.2f} %')
-
-    # Afficher la matrice de confusion pour le 1er SVM
-    cm_svm1 = confusion_matrix(y_test_svm1, y_pred_svm1)
-    sns.heatmap(cm_svm1, annot=True, fmt='d', cmap='Blues', xticklabels=['Not ' + class_svm1, class_svm1], yticklabels=['Not ' + class_svm1, class_svm1])
-    plt.title(f'Confusion Matrix for 1st SVM ({class_svm1} vs others)')
+    # Standardiser les données
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(beta_data_pca)
+    
+    # 🟢 SVM avec multi-classe direct (One-vs-One + class_weight)
+    svm_model = SVC(kernel="rbf", class_weight="balanced", decision_function_shape="ovo")
+    svm_model.fit(X_train_scaled, y_train)
+    
+    # Prédiction sur l'ensemble des données
+    y_pred = svm_model.predict(X_test_scaled)
+    
+    # Générer les labels réels pour beta_data_pca
+    y_true = np.array([assign_class(idx) for idx in beta_data_pca.index])
+    
+    # Matrice de confusion et rapport de classification
+    conf_matrix = confusion_matrix(y_true, y_pred, labels=["AD", "MCI", "SCI"])
+    sns.heatmap(conf_matrix, annot=True)
     plt.show()
-
-    # 2e SVM:
-    output_svm2, svm2_accuracy, y_test_svm2, y_pred_svm2 = svm_skf(latent_post_svm1.iloc[:, :-1], class_svm2)
-
-    latent_post_svm2 = pd.concat([latent_post_svm1, pd.DataFrame(output_svm2, columns=['label_svm2_pred'], index=latent_post_svm1.index)], axis=1)
-    latent_post_svm2['label_svm2'] = [1 if label == class_svm2 else 0 for label in latent_post_svm1.index]
-
-    print('------------------------------------------------------------------')
-    print(f'Accuracy en sortie du 2e SVM (par rapport à: {class_svm2})  : {svm2_accuracy * 100:.2f} %')
-
-    # Afficher la matrice de confusion pour le 2e SVM
-    cm_svm2 = confusion_matrix(y_test_svm2, y_pred_svm2)
-    sns.heatmap(cm_svm2, annot=True, fmt='d', cmap='Blues', xticklabels=['Not ' + class_svm2, class_svm2], yticklabels=['Not ' + class_svm2, class_svm2])
-    plt.title(f'Confusion Matrix for 2nd SVM ({class_svm2} vs others)')
-    plt.show()
-
-    print('------------------------------------------------------------------')
-    print('\n')
-#%%
-
-
-output_svm2 = [ x + 2 for x in output_svm2]
-
-index_liste2 = 0
-
-# Parcourir la liste1 et remplacer les 0 par les éléments de liste2
-for i in range(len(output_svm1)):
-    if output_svm1[i] == 0:
-        output_svm1[i] = output_svm2[index_liste2]
-        index_liste2 += 1
-
-
-for _ in range(len(output_svm1)):
-    if output_svm1[_] == 1:
-        output_svm1[_] = 'SCI'
-    elif output_svm1[_] == '2':
-        output_svm1[_] = 'MCI'
-    else:
-        output_svm1[_] = 'AD'
-
-
-sns.heatmap(confusion_matrix(latent_4freq.index, output_svm1, labels=['AD', 'MCI', 'SCI']), annot=True)
-plt.show()
-
-
-
+    class_report = classification_report(y_true, y_pred, target_names=["AD", "MCI", "SCI"])
+    
+    print("Matrice de confusion :\n", conf_matrix)
+    print("\nRapport de classification :\n", class_report)
+        
 
