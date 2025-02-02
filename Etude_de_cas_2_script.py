@@ -97,6 +97,8 @@ def plot_scatter_mean_std(data_dict, greek, state):
         
         plt.title(f'Scatter plot for frequency: {freq}')
         plt.grid(True)
+        plt.xlabel('mean')
+        plt.ylabel('std')
 
         plt.legend(title="State")
 
@@ -132,11 +134,11 @@ def plot_scatter_mean_std2(data_dict, greek, state, group_states=False):
         if group_states:
             plt.title(f'{freq}')
 
-            plt.xlabel('mean')
-            plt.ylabel('std')
-            plt.grid()
-            plt.legend()
-            plt.show()
+        plt.xlabel('mean')
+        plt.ylabel('std')
+        plt.grid()
+        plt.legend()
+        plt.show()
 
             
 def get_mean_electrod(data_dict, greek, state):
@@ -431,7 +433,7 @@ if __name__ == '__main__':
     
     #plot_histo(greek, state)
 
-    #plot_scatter_mean_std(greek, state)
+    plot_scatter_mean_std(data_dict, greek, state)
 
     #dict_mean = get_mean_by_electrod(greek, state)  
     
@@ -444,7 +446,7 @@ if __name__ == '__main__':
     data_big_correlation = get_data_big_corr_matrix(data_dict, greek=greek)
 
     
-    dict_pca = create_frequency_matrices_with_patient_labels(greek, state)
+    dict_pca = create_frequency_matrices_with_patient_labels(data_dict, greek, state)
     
     
 
@@ -464,23 +466,28 @@ if __name__ == '__main__':
                 
                 corr = (data_norm).corr()
                 
-                pca = PCA(n_components=5)
+                pca = PCA(n_components=20)
                 pca.fit(corr)
                 
                 data_pca = pca.fit_transform(corr)
                 
-                """
+                
                 #plot variance cumulée
                 exp_var= (pca.explained_variance_ratio_)
                 plt.plot(np.insert(np.cumsum(exp_var),0,0), color='red')
                 plt.bar(np.arange(1,len(exp_var)+1,1),np.cumsum(exp_var))
-                #plt.axhline(.9, linestyle='--', color= 'gray')
+                plt.axhline(.9, linestyle='--', color= 'gray')
                 plt.xlabel('valeurs propres')
                 plt.ylabel('%')
                 plt.title(f'{freq}-variance expliquée cumulée')
                 plt.show()
-                """
+                
                 explained_variance_ratio = pca.explained_variance_ratio_  # Variance expliquée par chaque composante
+                cum_explained_variance_ratio = np.cumsum(explained_variance_ratio)
+                number_of_compo_to_keep = 20 - len(cum_explained_variance_ratio[cum_explained_variance_ratio > 0.95])
+
+                print(f"Nombre de composantes principales à garder pour {freq}: {number_of_compo_to_keep}")
+                
                 fig, ax = plt.subplots(figsize=(8, 6))
                 
                 # Projection des individus sur les deux premières composantes principales
@@ -539,14 +546,29 @@ if __name__ == '__main__':
                 
                 corr = (data_norm).corr()
                 
-                pca = PCA(n_components=5)
+                pca = PCA(n_components=60)
                 pca.fit(corr)
                 
                 data_pca = pca.fit_transform(corr)
                 
+                
+                exp_var= (pca.explained_variance_ratio_)
+                plt.plot(np.insert(np.cumsum(exp_var),0,0), color='red')
+                plt.bar(np.arange(1,len(exp_var)+1,1),np.cumsum(exp_var))
+                plt.axhline(.99, linestyle='--', color= 'gray')
+                plt.xlabel('valeurs propres')
+                plt.ylabel('%')
+                plt.title(f'{freq}-variance expliquée cumulée')
+                plt.show()
               
                 
                 explained_variance_ratio = pca.explained_variance_ratio_  # Variance expliquée par chaque composante
+                cum_explained_variance_ratio = np.cumsum(explained_variance_ratio)
+                number_of_compo_to_keep = 60 - len(cum_explained_variance_ratio[cum_explained_variance_ratio > 0.99])
+
+                print(f"Nombre de composantes principales à garder pour {freq}: {number_of_compo_to_keep}")
+                
+                
                 fig, ax = plt.subplots(figsize=(8, 6))
                 
         
@@ -632,5 +654,115 @@ if __name__ == '__main__':
 
     
 #%%
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
+from imblearn.over_sampling import RandomOverSampler
+
+
+def svm_skf(data, class_to_distinguish):
+    X = data.iloc[:, :-1]
+    y = [1 if label == class_to_distinguish else 0 for label in data.index]
+
+    svm = SVC(kernel='linear')
+    skf = StratifiedKFold(n_splits=5)
+    accuracies = []
+    all_y_test = []
+    all_y_pred = []
+
+    for train_index, test_index in skf.split(X, y):
+        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_test = np.array(y)[train_index], np.array(y)[test_index]
+
+        # Utiliser RandomOverSampler pour équilibrer les classes dans le jeu d'entraînement
+        ros = RandomOverSampler(random_state=42)
+        X_train_res, y_train_res = ros.fit_resample(X_train, y_train)
+
+        # Entraîner le modèle SVM
+        svm.fit(X_train_res, y_train_res)
+
+        # Prédire les labels pour le jeu de test
+        y_pred = svm.predict(X_test)
+
+        # Calculer la précision
+        accuracies.append(accuracy_score(y_test, y_pred))
+
+        # Stocker les vrais labels et les prédictions
+        all_y_test.extend(y_test)
+        all_y_pred.extend(y_pred)
+
+    mean_accuracy = np.mean(accuracies)
+    return all_y_pred, mean_accuracy, all_y_test, all_y_pred
+
+
+#for pair in pairs_states:
+for pair in [('SCI', 'AD')]:
+
+    class_svm1 = pair[0]
+    class_svm2 = pair[1]
+
+    # 1er SVM:
+    output_svm1, svm1_accuracy, y_test_svm1, y_pred_svm1 = svm_skf(latent_4freq, class_svm1)
+
+    # Préparation entrée du 2e SVM
+    latent_post_svm1 = pd.concat([latent_4freq, pd.DataFrame(output_svm1, columns=['label_svm1'], index=latent_4freq.index)], axis=1)
+    latent_post_svm1['label_svm2'] = [1 if label == class_svm2 else 0 for label in latent_post_svm1.index]
+    latent_post_svm1 = latent_post_svm1[latent_post_svm1['label_svm1'] == 0]
+    latent_post_svm1.drop('label_svm1', axis=1, inplace=True)
+
+    print(f'Classe 1: {class_svm1}         ||          Classe 2: {class_svm2}')
+    print('------------------------------------------------------------------')
+    print(f'Accuracy en sortie du 1e SVM (par rapport à: {class_svm1})  : {svm1_accuracy * 100:.2f} %')
+
+    # Afficher la matrice de confusion pour le 1er SVM
+    cm_svm1 = confusion_matrix(y_test_svm1, y_pred_svm1)
+    sns.heatmap(cm_svm1, annot=True, fmt='d', cmap='Blues', xticklabels=['Not ' + class_svm1, class_svm1], yticklabels=['Not ' + class_svm1, class_svm1])
+    plt.title(f'Confusion Matrix for 1st SVM ({class_svm1} vs others)')
+    plt.show()
+
+    # 2e SVM:
+    output_svm2, svm2_accuracy, y_test_svm2, y_pred_svm2 = svm_skf(latent_post_svm1.iloc[:, :-1], class_svm2)
+
+    latent_post_svm2 = pd.concat([latent_post_svm1, pd.DataFrame(output_svm2, columns=['label_svm2_pred'], index=latent_post_svm1.index)], axis=1)
+    latent_post_svm2['label_svm2'] = [1 if label == class_svm2 else 0 for label in latent_post_svm1.index]
+
+    print('------------------------------------------------------------------')
+    print(f'Accuracy en sortie du 2e SVM (par rapport à: {class_svm2})  : {svm2_accuracy * 100:.2f} %')
+
+    # Afficher la matrice de confusion pour le 2e SVM
+    cm_svm2 = confusion_matrix(y_test_svm2, y_pred_svm2)
+    sns.heatmap(cm_svm2, annot=True, fmt='d', cmap='Blues', xticklabels=['Not ' + class_svm2, class_svm2], yticklabels=['Not ' + class_svm2, class_svm2])
+    plt.title(f'Confusion Matrix for 2nd SVM ({class_svm2} vs others)')
+    plt.show()
+
+    print('------------------------------------------------------------------')
+    print('\n')
+#%%
+
+
+output_svm2 = [ x + 2 for x in output_svm2]
+
+index_liste2 = 0
+
+# Parcourir la liste1 et remplacer les 0 par les éléments de liste2
+for i in range(len(output_svm1)):
+    if output_svm1[i] == 0:
+        output_svm1[i] = output_svm2[index_liste2]
+        index_liste2 += 1
+
+
+for _ in range(len(output_svm1)):
+    if output_svm1[_] == 1:
+        output_svm1[_] = 'SCI'
+    elif output_svm1[_] == '2':
+        output_svm1[_] = 'MCI'
+    else:
+        output_svm1[_] = 'AD'
+
+
+sns.heatmap(confusion_matrix(latent_4freq.index, output_svm1, labels=['AD', 'MCI', 'SCI']), annot=True)
+plt.show()
+
+
 
 
