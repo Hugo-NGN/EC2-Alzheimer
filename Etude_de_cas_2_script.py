@@ -750,14 +750,18 @@ if __name__ == '__main__':
     
     # Matrice de confusion et rapport de classification
     conf_matrix = confusion_matrix(y_true, y_pred, labels=["AD", "MCI", "SCI"])
-    sns.heatmap(conf_matrix, annot=True)
+    sns.heatmap(conf_matrix, cmap='gray', annot=True,  xticklabels=["AD", "MCI", "SCI"], yticklabels=["AD", "MCI", "SCI"])
+    plt.xlabel("Prédictions")
+    plt.ylabel("Vérité")
+    plt.title("Matrice de confusion (BETA only)")
     plt.show()
+    
     class_report = classification_report(y_true, y_pred, target_names=["AD", "MCI", "SCI"])
     
     print("Matrice de confusion :\n", conf_matrix)
     print("\nRapport de classification :\n", class_report)
         
-#%% SVM 4 FREQ CONCAT
+#%% SVM multiclasse 4 FREQ CONCAT
 
     #1 ACP sur ALPHA
     
@@ -840,6 +844,7 @@ if __name__ == '__main__':
     y_true_list = []
     y_pred_list = []
     
+    
     # Validation en LOOCV
     for train_index, test_index in loo.split(X_scaled):
         X_train, X_test = X_scaled[train_index], X_scaled[test_index]
@@ -858,7 +863,7 @@ if __name__ == '__main__':
     
     # Matrice de confusion et rapport de classification
     conf_matrix = confusion_matrix(y_true_list, y_pred_list, labels=["AD", "MCI", "SCI"])
-    sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues", xticklabels=["AD", "MCI", "SCI"], yticklabels=["AD", "MCI", "SCI"])
+    sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="gray", xticklabels=["AD", "MCI", "SCI"], yticklabels=["AD", "MCI", "SCI"])
     plt.xlabel("Prédictions")
     plt.ylabel("Vérité")
     plt.title("Matrice de confusion 4 fréquences concaténées")
