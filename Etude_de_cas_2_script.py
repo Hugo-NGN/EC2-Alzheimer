@@ -489,6 +489,16 @@ def xgboost_analysis(data : dict | pd.DataFrame, verbose = False, k=5,
     return output, mean_accuracy
 
 
+def assign_class(index):
+        if index.startswith("AD"):
+            return "AD"
+        elif index.startswith("MCI"):
+            return "MCI"
+        elif index.startswith("SCI"):
+            return "SCI"
+        else:
+            return "Unknown"
+
 def mci_aleatoires(liste_entree, nombre_mci=28):
     mci_elements = [element for element in liste_entree if element.startswith('MCI')]
 
@@ -713,15 +723,7 @@ if __name__ == '__main__':
     
     beta_data_pca_filtre = beta_data_pca.loc[liste_individus_equilibre]
     
-    def assign_class(index):
-        if index.startswith("AD"):
-            return "AD"
-        elif index.startswith("MCI"):
-            return "MCI"
-        elif index.startswith("SCI"):
-            return "SCI"
-        else:
-            return "Unknown"
+    
 
     # Ajout de la colonne classe aux individus sélectionnés
     beta_data_pca_filtre = beta_data_pca.loc[liste_individus_equilibre].copy()
@@ -736,7 +738,7 @@ if __name__ == '__main__':
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(beta_data_pca)
     
-    # 🟢 SVM avec multi-classe direct (One-vs-One + class_weight)
+    # SVM avec multi-classe direct (One-vs-One + class_weight)
     svm_model = SVC(kernel="rbf", class_weight="balanced", decision_function_shape="ovo")
     svm_model.fit(X_train_scaled, y_train)
     
@@ -755,4 +757,115 @@ if __name__ == '__main__':
     print("Matrice de confusion :\n", conf_matrix)
     print("\nRapport de classification :\n", class_report)
         
+#%% SVM 4 FREQ CONCAT
 
+    #1 ACP sur ALPHA
+    
+    alpha_data = dict_pca["ALPHA"].T
+    alpha_data_norm = (alpha_data-alpha_data.mean())/alpha_data.std()
+    
+    alpha_corr = (alpha_data_norm).corr()
+    
+    alpha_pca = PCA(n_components=5)
+    
+    alpha_pca.fit(alpha_corr)
+    alpha_pca.set_output(transform = "pandas")
+    alpha_data_pca = alpha_pca.fit_transform(alpha_corr)
+    alpha_data_pca.columns = ["ALPHA_"+ col for col in alpha_data_pca.columns.to_list()] 
+    
+    #1 ACP sur BETA
+    
+    beta_data = dict_pca["BETA"].T
+    beta_data_norm = (beta_data-beta_data.mean())/beta_data.std()
+    
+    beta_corr = (beta_data_norm).corr()
+    
+    beta_pca = PCA(n_components=2)
+    
+    beta_pca.fit(beta_corr)
+    beta_pca.set_output(transform = "pandas")
+    beta_data_pca = beta_pca.fit_transform(beta_corr)
+    beta_data_pca.columns = ["BETA_"+ col for col in beta_data_pca.columns.to_list()] 
+
+
+    #1 ACP sur DELTA
+    
+    delta_data = dict_pca["DELTA"].T
+    delta_data_norm = (delta_data-delta_data.mean())/delta_data.std()
+    
+    delta_corr = (delta_data_norm).corr()
+    
+    delta_pca = PCA(n_components=2)
+    
+    delta_pca.fit(delta_corr)
+    delta_pca.set_output(transform = "pandas")
+    delta_data_pca = delta_pca.fit_transform(delta_corr)
+    delta_data_pca.columns = ["DELTA_"+ col for col in delta_data_pca.columns.to_list()] 
+
+    
+    
+    #1 ACP sur theta
+    
+    theta_data = dict_pca["THETA"].T
+    theta_data_norm = (theta_data-theta_data.mean())/theta_data.std()
+    
+    theta_corr = (theta_data_norm).corr()
+    
+    theta_pca = PCA(n_components=32)
+    
+    theta_pca.fit(theta_corr)
+    theta_pca.set_output(transform = "pandas")
+    theta_data_pca = theta_pca.fit_transform(theta_corr)
+    theta_data_pca.columns = ["THETA_"+ col for col in theta_data_pca.columns.to_list()] 
+
+    
+    
+    # Concaténer les données des 4 bandes de fréquence
+    df_4freq = pd.concat([alpha_data_pca, beta_data_pca, delta_data_pca, theta_data_pca], axis=1)
+    
+    # Ajouter la colonne "classe"
+    df_4freq["classe"] = df_4freq.index.map(assign_class)
+    
+    # Séparer les features et labels
+    X = df_4freq.drop(columns=["classe"]).values
+    y = df_4freq["classe"].values
+    
+    # Standardisation des données
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    
+    # Initialisation de LOOCV
+    loo = LeaveOneOut()
+    
+    y_true_list = []
+    y_pred_list = []
+    
+    # Validation en LOOCV
+    for train_index, test_index in loo.split(X_scaled):
+        X_train, X_test = X_scaled[train_index], X_scaled[test_index]
+        y_train, y_test = y[train_index], y[test_index]
+    
+        # Entraînement du modèle SVM
+        svm_model = SVC(kernel="rbf", class_weight="balanced", decision_function_shape="ovo")
+        svm_model.fit(X_train, y_train)
+    
+        # Prédiction
+        y_pred = svm_model.predict(X_test)
+    
+        # Stocker les résultats
+        y_true_list.append(y_test[0])
+        y_pred_list.append(y_pred[0])
+    
+    # Matrice de confusion et rapport de classification
+    conf_matrix = confusion_matrix(y_true_list, y_pred_list, labels=["AD", "MCI", "SCI"])
+    sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues", xticklabels=["AD", "MCI", "SCI"], yticklabels=["AD", "MCI", "SCI"])
+    plt.xlabel("Prédictions")
+    plt.ylabel("Vérité")
+    plt.title("Matrice de confusion 4 fréquences concaténées")
+    plt.show()
+    
+    class_report = classification_report(y_true_list, y_pred_list, target_names=["AD", "MCI", "SCI"])
+    print("Matrice de confusion :\n", conf_matrix)
+    print("\nRapport de classification :\n", class_report)
+    
+    
