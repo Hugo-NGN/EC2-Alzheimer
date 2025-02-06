@@ -5,6 +5,7 @@ Created on Wed Jan  8 21:52:10 2025
 @author: nathan.piatte, felix.courtin, hugo.nguyen
 """
 
+# Déplacé dans main.py
 #%% TODO-list
 # TODO : mettre tous les résultats (ex: accuracy) en %
 # TODO : matrices corrélations 4x(4x435) (3 différentes pour les 3 états de maladie)
@@ -29,7 +30,7 @@ from xgboost import XGBClassifier
 from imblearn.over_sampling import RandomOverSampler
 import random
 
-
+# Déplacé dans utils/data_loading.py
 def load_data(path, greek, state):
     data_dict = dict()
     
@@ -52,18 +53,22 @@ def load_data(path, greek, state):
             data_dict[freq][condition] = data_list
     return data_dict
 
+# Déplacé dans utils/visualization.py
 def heat_map_fq_state(data_dict, greek, state, annot = False, vmin=None, vmax=None):
     for i, _ in enumerate(data_dict[greek][state]):
         plt.title(f'Matrice {greek}-{state} {i+1}')
         sns.heatmap(_, annot=annot, cmap ='viridis', vmin=vmin, vmax=vmax)
         plt.show()
-        
+
+# Déplacé dans utils/data_processing.py, renommé en get_value
 def get_data_greek_state(data_dict, greek, state):
     return (data_dict[greek][state])
 
+# Déplacé dans utils/data_processing.py, renommé en get_upper_matrix
 def get_upper(data_freq_dstate):
     return data_freq_dstate[np.triu_indices_from(data_freq_dstate, k=1)]
 
+# Déplacé dans utils/visualization.py
 def plot_histo(data_dict, greek, state):
     for freq in greek:
         for dstate in state.keys():
@@ -75,8 +80,8 @@ def plot_histo(data_dict, greek, state):
             plt.grid()
             plt.title(f'{freq}-{dstate}\n mean={np.mean(data):.2f} std={np.std(data):.2f}')
             plt.show()
-            
 
+# Déplacé dans utils/visualization.py
 def plot_scatter_mean_std(data_dict, greek, state):
     # Créer un graphique pour chaque fréquence
     for freq in greek:
@@ -105,7 +110,8 @@ def plot_scatter_mean_std(data_dict, greek, state):
         plt.legend(title="State")
 
         plt.show()
-        
+
+# Fusionné avec plot_scatter_mean_std
 def plot_scatter_mean_std2(data_dict, greek, state, group_states=False):
     colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k'][:len(greek)]
     for freq in greek:
@@ -142,7 +148,7 @@ def plot_scatter_mean_std2(data_dict, greek, state, group_states=False):
         plt.legend()
         plt.show()
 
-            
+# Déplacé dans utils/data_processing.py, renommé en get_mean_electrods
 def get_mean_electrod(data_dict, greek, state):
     mean_results = {} 
 
@@ -163,7 +169,7 @@ def get_mean_electrod(data_dict, greek, state):
 
     return mean_results
 
-                
+# Déplacé dans utils/data_processing.py, renommé en group_mean_by_electrods      
 def group_mean_vectors_as_matrices(data_dict, greek, state):
     """
     Retourne la moyenne par électrode pour chaque patient (matrice 30x4) dans un dictionnaire avec pour clé les états
@@ -186,6 +192,7 @@ def group_mean_vectors_as_matrices(data_dict, greek, state):
     
     return grouped_matrices
 
+# Déplacé dans utils/data_processing.py, renommé en group_triangular_matrices
 def extract_and_group_triangular_matrices_df(data_dict, greek, state):
     grouped_vectors = {}
     
@@ -214,6 +221,7 @@ def extract_and_group_triangular_matrices_df(data_dict, greek, state):
     
     return grouped_vectors
 
+# Déplacé dans utils/data_processing.py, renommé en patient_info_by_frequency
 def create_frequency_matrices_with_patient_labels(data_dict, greek, state):
     """
     Crée un DataFrame par fréquence (ALPHA, BETA, ...) avec 435 colonnes pour les vecteurs triangulaires supérieurs,
@@ -250,6 +258,7 @@ def create_frequency_matrices_with_patient_labels(data_dict, greek, state):
     return frequency_matrices
 
 
+# Déplacé dans utils/visualization.py
 def get_summary(data_dict, greek, state, by_patient=False):
    for freq in greek:
        for dstate in state.keys():
@@ -267,7 +276,8 @@ def get_summary(data_dict, greek, state, by_patient=False):
                    print(f'      patient {i+1:3d} mean: {np.mean(data_patient):.3f}   | std: {np.std(data_patient):.3f}')
            print()
        print("=====================================")
-       
+
+# Déplacé dans utils/data_processing.py
 def get_data_big_corr_matrix(data_dict, state={'AD':28, 'MCI':40, 'SCI':22}, greek=['ALPHA', 'BETA', 'DELTA', 'THETA'], plot_matrix = True):
     data_big_correlation = {}
     for dstate in state.keys():
@@ -297,7 +307,8 @@ def get_data_big_corr_matrix(data_dict, state={'AD':28, 'MCI':40, 'SCI':22}, gre
         
     return data_big_correlation     
        
-
+# Déplacé dans utils/data_processing.py
+# A éviter, privilégier la fonction pca_on_patients
 def proj_acp_4freq(dict_pca, greek=['ALPHA', 'BETA', 'DELTA', 'THETA']):
     #récupérer les projections des individus pour les 4 acp des fréquences
     variable_acp = list()
@@ -326,8 +337,7 @@ def proj_acp_4freq(dict_pca, greek=['ALPHA', 'BETA', 'DELTA', 'THETA']):
     proj_pca_concat = pd.concat(variable_acp, axis = 1)
     return proj_pca_concat
 
-
-
+# Déplacé dans analysis/svm.py
 def svm_skf(data, class_svm, verbose = False):
     """
     Perform SVM classification with Stratified K-Fold cross-validation.
@@ -370,7 +380,7 @@ def svm_skf(data, class_svm, verbose = False):
     
     return output, mean_accuracy
 
-
+# Déplacé dans utils/methods.py
 def dict_to_df(dict_data):
     """
     Converts a nested dictionary of data into a pandas DataFrame.
@@ -416,7 +426,7 @@ def dict_to_df(dict_data):
 
     return pd.DataFrame(result_list)
     
-
+# Déplacé dans analysis/methods.py
 def xgboost_analysis(data : dict | pd.DataFrame, verbose = False, k=5,
                      mode = "total", use_stratified_kfold = True):
     """
@@ -488,7 +498,7 @@ def xgboost_analysis(data : dict | pd.DataFrame, verbose = False, k=5,
 
     return output, mean_accuracy
 
-
+# Déplacé dans utils/data_processing.py
 def assign_class(index):
         if index.startswith("AD"):
             return "AD"
@@ -499,6 +509,7 @@ def assign_class(index):
         else:
             return "Unknown"
 
+# Déplacé dans utils/data_loading.py
 def mci_aleatoires(liste_entree, nombre_mci=28):
     mci_elements = [element for element in liste_entree if element.startswith('MCI')]
 
@@ -512,6 +523,7 @@ def mci_aleatoires(liste_entree, nombre_mci=28):
         
 
 #%%
+# Déplacé dans main.py
 path = './EpEn Data_sans diag_norm_90 sujets/EpEn Data_sans diag_norm_90 sujets'
 if __name__ == '__main__':
     
