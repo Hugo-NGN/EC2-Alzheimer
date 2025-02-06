@@ -13,8 +13,6 @@ from sklearn.svm import SVC
 from typing import Literal
 from xgboost import XGBClassifier
 
-from utils.data_loading import dict_to_df
-
 
 def svm_skf(data, mode : Literal["multi","1v1v1"]="multi", verbose=False,
             stratified=True, p_kernel="linear"):

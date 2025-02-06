@@ -8,7 +8,6 @@ Ce script montre un exemple d'utilisation de quelques fonctions
 pour l'étude de cas 2.
 """
 import importlib
-from sklearn.metrics import confusion_matrix, classification_report
 
 # %%
 # On importe tout et on les recharges à chaque fois pour éviter les problèmes de cache
