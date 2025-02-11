@@ -207,7 +207,8 @@ def svm_skf_gridsearch(data, mode: Literal["multi", "1v1v1"] = "multi", verbose=
     mean_accuracy = np.mean(accuracies)
 
     output = [list(corresp_y.keys())[list(corresp_y.values()).index(i)] for i in output]
-
+    
+    print(grid_search.best_params_)
     if verbose:
         print("Précision moyenne avec StratifiedKFold (mode : "
               f"{mode.capitalize()}) : {mean_accuracy:.2f}")
