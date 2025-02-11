@@ -245,6 +245,9 @@ def pca_on_patients(data_dict, cum_var_threshold=0.95,
     présentes dans le dictionnaire.
     """
     frequencies = data_dict.keys()
+    pca_df = pd.DataFrame()
+    
+    
     for freq in frequencies:
         if not isinstance(data_dict[freq], pd.DataFrame):
             raise ValueError(f"Les données pour {freq} doivent être un DataFrame.")
@@ -252,7 +255,7 @@ def pca_on_patients(data_dict, cum_var_threshold=0.95,
         data_norm = (data - data.mean()) / data.std()
         corr = data_norm.corr()
 
-        pca = PCA()
+        pca = PCA(n_components=60)
         pca.fit(corr)
 
         cum_var = np.cumsum(pca.explained_variance_ratio_)
@@ -265,7 +268,8 @@ def pca_on_patients(data_dict, cum_var_threshold=0.95,
         pca = PCA(n_components=n_comp)
         pca_data = pca.fit_transform(data_norm)
 
-        pca_df = pd.DataFrame(pca_data, columns=[f"PC{i+1}" for i in range(n_comp)])
+        pca_data = pd.DataFrame(pca_data, columns=[f"PC{i+1}" for i in range(n_comp)])
+        pca_df = pd.concat([pca_data, pca_df], axis=1)
         pca_df["State"] = [assign_class(index) for index in data.index]
         pca_df["Patient"] = [int(index.split("_")[-1]) for index in data.index]
 
@@ -275,6 +279,15 @@ def pca_on_patients(data_dict, cum_var_threshold=0.95,
         pca_df = pca_df[cols]
 
     return pca_df
+
+
+
+
+
+
+
+
+
 
 def proj_acp_4freq(dict_pca, frequencies=FREQUENCIES):
     #récupérer les projections des individus pour les 4 acp des fréquences
