@@ -171,6 +171,12 @@ def svm_skf_gridsearch(data, verbose=False,stratified=True):
 
     corresp_y = {state: i for i, state in enumerate(df_data["State"].unique())}
     df_data["State"] = df_data["State"].map(corresp_y)
+    
+    cols = df_data.columns.tolist()
+    cols.insert(0, cols.pop(cols.index('State')))
+    cols.insert(1, cols.pop(cols.index('Patient')))
+    df_data = df_data[cols]
+
 
     model = SVC()
 
