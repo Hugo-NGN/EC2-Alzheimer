@@ -20,11 +20,11 @@ df_data = dict_to_df(data_dict)
 # Préparation des données
 X = df_data.drop(columns=["State", "Patient"])  # Variables explicatives
 y = df_data["State"].values  # Classes cibles
-print(X.head())
 
 # Sélection des variables avec LDA
-selected_indices, selected_features, selected_features_names = lda_for_var_selection(X, y, variance_threshold=0.9)
-
+selected_indices, selected_features, selected_features_names = lda_for_var_selection(X, y, variance_threshold=0.05)
+print("Nombre de features sélectionnées : ", selected_features.shape[1])
+print("---------------------------------------------------------------------------------------------------")
 # Résultats
 print("Indices des variables sélectionnées :", selected_indices)
 if selected_features_names is not None:
@@ -35,10 +35,10 @@ df_selected["State"] = df_data["State"].values
 
 y_pred_svm, accuracy_svm = svm_skf_gridsearch(df_selected, mode="multi", verbose=True)
 y_true = df_data["State"].values.tolist()
-
+print("---------------------------------------------------------------------------------------------------")
 print("Utilisation d'un SVM sur toutes les données :")
 complete_classification_report(y_true, y_pred_svm)
-
+print("---------------------------------------------------------------------------------------------------")
 y_pred_xgboost, accuracy_xgboost = xgboost_skf(df_selected, verbose=True)
 print("Utilisation d'un XGBoost sur toutes les données :")
 complete_classification_report(y_true, y_pred_xgboost)
