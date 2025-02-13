@@ -105,6 +105,10 @@ def xgboost_skf(data: pd.DataFrame, verbose=False, k=5,
     # Map labels to integers
     corresp_y = {state: i for i, state in enumerate(df_data["State"].unique())}
     df_data["State"] = df_data["State"].map(corresp_y)
+    
+    cols = df_data.columns.tolist()
+    cols.insert(0, cols.pop(cols.index('State')))
+    df_data = df_data[cols]
 
     model = XGBClassifier()
     if use_stratified_kfold:

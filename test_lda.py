@@ -23,7 +23,7 @@ y = df_data["State"].values  # Classes cibles
 print(X.head())
 
 # Sélection des variables avec LDA
-selected_indices, selected_features, selected_features_names = lda_for_var_selection(X, y, variance_threshold=0.9)
+selected_indices, selected_features, selected_features_names = lda_for_var_selection(X, y, variance_threshold=0.10)
 
 # Résultats
 print("Indices des variables sélectionnées :", selected_indices)
@@ -32,6 +32,7 @@ if selected_features_names is not None:
 
 df_selected = pd.DataFrame(selected_features, columns=selected_features_names)
 df_selected["State"] = df_data["State"].values
+df_selected["Patient"] = [1 for index in df_selected.index]
 
 y_pred_svm, accuracy_svm = svm_skf_gridsearch(df_selected, verbose=True)
 y_true = df_data["State"].values.tolist()

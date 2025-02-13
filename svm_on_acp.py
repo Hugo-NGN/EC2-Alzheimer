@@ -38,8 +38,8 @@ df_data = dict_to_df(data_dict)
 #%% ACP
 frequencies = [
     'ALPHA',
-    'BETA',
-    'DELTA',
+    #'BETA',
+    #'DELTA',
     'THETA'
     ]
 df_freq = patient_info_by_frequency(data_dict, frequencies= frequencies)
