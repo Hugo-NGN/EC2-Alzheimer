@@ -111,8 +111,14 @@ def get_summary(data_dict, frequencies = FREQUENCIES, states = STATES, by_patien
         print("=====================================")
 
 
-def complete_classification_report(y_true, y_pred):
+def complete_classification_report(y_true, y_pred, method_title = None):
     print("Résultats de la classification :")
     print(classification_report(y_true, y_pred))
     print("Matrice de confusion :")
     print(confusion_matrix(y_true, y_pred))
+    sns.heatmap(confusion_matrix(y_true, y_pred), annot=True,   xticklabels=["AD", "MCI", "SCI"], yticklabels=["AD", "MCI", "SCI"])
+    if method_title !=None:
+        plt.title(f"Matrice de confusion ({method_title})")
+    else:
+        plt.title("Matrice de confusion")
+    plt.show()

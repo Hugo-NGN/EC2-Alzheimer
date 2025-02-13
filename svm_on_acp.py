@@ -42,9 +42,12 @@ frequencies = [
     #'DELTA',
     'THETA'
     ]
+
+cum_var_threshold = 0.95
+
 df_freq = patient_info_by_frequency(data_dict, frequencies= frequencies)
 # %%
-acp_patient = pca_on_patients(df_freq, cum_var_threshold=0.95)
+acp_patient = pca_on_patients(df_freq, cum_var_threshold=cum_var_threshold)
 
 
 
@@ -59,8 +62,23 @@ mci_df = acp_patient[acp_patient['State'] == 'MCI'].sample(n=28, random_state=1)
 balanced_df = pd.concat([ad_sci_df, mci_df])
 
 # %%
+
+print("\n-----------------------------------------------------------------------")
+print("Bande de fréquence utilisée(s): ", *frequencies)
+print("Seuil de variance cumulée de l'ACP: ", cum_var_threshold)
+print("-----------------------------------------------------------------------")
+
+
 y_pred_svm, accuracy_svm = svm_skf_gridsearch(balanced_df, verbose=True)
 y_true = balanced_df["State"].values.tolist()
 
 print("Utilisation d'un SVM sur toutes les données :")
-complete_classification_report(y_true, y_pred_svm)
+complete_classification_report(y_true, y_pred_svm, method_title= "SVM-ACP")
+
+
+
+y_pred_xgboost, accuracy_xgboost = xgboost_skf(balanced_df, verbose=True)
+print("Utilisation d'un XGBoost sur toutes les données :")
+complete_classification_report(y_true, y_pred_xgboost,  method_title= "XGB-ACP")
+
+

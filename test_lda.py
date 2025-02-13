@@ -65,8 +65,8 @@ y_pred_svm, accuracy_svm = svm_skf_gridsearch(df_selected, verbose=True)
 y_true = df_selected["State"].values.tolist()
 
 print("Utilisation d'un SVM sur toutes les données :")
-complete_classification_report(y_true, y_pred_svm)
+complete_classification_report(y_true, y_pred_svm, method_title="SVM-LDA")
 
 y_pred_xgboost, accuracy_xgboost = xgboost_skf(df_selected, verbose=True)
 print("Utilisation d'un XGBoost sur toutes les données :")
-complete_classification_report(y_true, y_pred_xgboost)
+complete_classification_report(y_true, y_pred_xgboost, method_title="XGB-LDA")
