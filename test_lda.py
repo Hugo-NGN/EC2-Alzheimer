@@ -33,7 +33,7 @@ if selected_features_names is not None:
 df_selected = pd.DataFrame(selected_features, columns=selected_features_names)
 df_selected["State"] = df_data["State"].values
 
-y_pred_svm, accuracy_svm = svm_skf_gridsearch(df_selected, mode="multi", verbose=True)
+y_pred_svm, accuracy_svm = svm_skf_gridsearch(df_selected, verbose=True)
 y_true = df_data["State"].values.tolist()
 
 print("Utilisation d'un SVM sur toutes les données :")

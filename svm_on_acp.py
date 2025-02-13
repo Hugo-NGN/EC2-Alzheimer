@@ -36,14 +36,31 @@ data_dict = load_data(PATH)
 df_data = dict_to_df(data_dict)
 
 #%% ACP
-df_freq = patient_info_by_frequency(data_dict)
+frequencies = [
+    'ALPHA',
+    'BETA',
+    'DELTA',
+    'THETA'
+    ]
+df_freq = patient_info_by_frequency(data_dict, frequencies= frequencies)
 # %%
-acp_patient = pca_on_patients(df_freq, cum_var_threshold=0.90)
+acp_patient = pca_on_patients(df_freq, cum_var_threshold=0.95)
 
 
+
+#equilibrer classes
+import pandas as pd
+ad_sci_df = acp_patient[acp_patient['State'].isin(['AD', 'SCI'])]
+
+# Sélectionner 28 échantillons pour 'MCI'
+mci_df = acp_patient[acp_patient['State'] == 'MCI'].sample(n=28, random_state=1)
+
+# Concaténer les deux DataFrames
+balanced_df = pd.concat([ad_sci_df, mci_df])
+
 # %%
-y_pred_svm, accuracy_svm = svm_skf_gridsearch(acp_patient, mode="multi", verbose=True)
-y_true = df_data["State"].values.tolist()
+y_pred_svm, accuracy_svm = svm_skf_gridsearch(balanced_df, verbose=True)
+y_true = balanced_df["State"].values.tolist()
 
 print("Utilisation d'un SVM sur toutes les données :")
 complete_classification_report(y_true, y_pred_svm)

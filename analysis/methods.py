@@ -141,8 +141,7 @@ def xgboost_skf(data: pd.DataFrame, verbose=False, k=5,
 
 
 
-def svm_skf_gridsearch(data, mode: Literal["multi", "1v1v1"] = "multi", verbose=False,
-                       stratified=True, p_kernel=["linear", "rbf", "sigmoid", "poly"]):
+def svm_skf_gridsearch(data, verbose=False,stratified=True):
     """
     Applique une classification SVM avec (Stratified)KFold et GridSearchCV pour optimiser les hyperparamètres.
 
@@ -169,15 +168,15 @@ def svm_skf_gridsearch(data, mode: Literal["multi", "1v1v1"] = "multi", verbose=
     corresp_y = {state: i for i, state in enumerate(df_data["State"].unique())}
     df_data["State"] = df_data["State"].map(corresp_y)
 
-    if mode == "multi":
-        model = SVC( probability=True)
-    elif mode == "1v1v1":
-        model = SVC(decision_function_shape="ovo", probability=True)
+    model = SVC()
 
     param_grid = {
         'C': [0.1, 1, 10, 100],
         'gamma': [1, 0.1, 0.01, 0.001],
-        'kernel': p_kernel
+        'kernel': ["linear", "rbf", "sigmoid", "poly"],
+        'decision_function_shape': ['ovo', 'ovr'],
+        'probability': [True, False],
+        'class_weight' : ['balanced', None]
     }
 
     if stratified:
@@ -210,7 +209,6 @@ def svm_skf_gridsearch(data, mode: Literal["multi", "1v1v1"] = "multi", verbose=
     
     print(grid_search.best_params_)
     if verbose:
-        print("Précision moyenne avec StratifiedKFold (mode : "
-              f"{mode.capitalize()}) : {mean_accuracy:.2f}")
+        print(f"Précision moyenne avec StratifiedKFold  : {mean_accuracy:.2f}")
 
     return output, mean_accuracy
