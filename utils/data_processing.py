@@ -10,7 +10,8 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
-
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.preprocessing import StandardScaler
 from utils.global_variables import FREQUENCIES, STATES
 
 
@@ -154,11 +155,11 @@ def patient_info_by_frequency(data_dict, frequencies=FREQUENCIES, states=STATES)
             for i, patient in enumerate(data):
                 triangular_vector = patient[np.triu_indices_from(patient, k=1)]
                 patient_vectors.append(triangular_vector)
-                patient_labels.append(f"{dstate}_{i+1}")
+                patient_labels.append(f"{dstate}_{i + 1}")
 
         dict_frequency_matrices[freq] = pd.DataFrame(
             patient_vectors,
-            columns=[f"Electrode_{i+1}"
+            columns=[f"Electrode_{i + 1}"
                      for i in range(len(triangular_vector))],
             index=patient_labels
         )
@@ -246,8 +247,7 @@ def pca_on_patients(data_dict, cum_var_threshold=0.95,
     """
     frequencies = data_dict.keys()
     pca_df = pd.DataFrame()
-    
-    
+
     for freq in frequencies:
         if not isinstance(data_dict[freq], pd.DataFrame):
             raise ValueError(f"Les données pour {freq} doivent être un DataFrame.")
@@ -268,7 +268,7 @@ def pca_on_patients(data_dict, cum_var_threshold=0.95,
         pca = PCA(n_components=n_comp)
         pca_data = pca.fit_transform(data_norm)
 
-        pca_data = pd.DataFrame(pca_data, columns=[f"{freq}_PC{i+1}" for i in range(n_comp)])
+        pca_data = pd.DataFrame(pca_data, columns=[f"{freq}_PC{i + 1}" for i in range(n_comp)])
         pca_df = pd.concat([pca_df, pca_data], axis=1)
         pca_df["State"] = [assign_class(index) for index in data.index]
         pca_df["Patient"] = [int(index.split("_")[-1]) for index in data.index]
@@ -282,48 +282,89 @@ def pca_on_patients(data_dict, cum_var_threshold=0.95,
     return pca_df
 
 
-
-
-
-
-
-
-
-
 def proj_acp_4freq(dict_pca, frequencies=FREQUENCIES):
-    #récupérer les projections des individus pour les 4 acp des fréquences
+    # récupérer les projections des individus pour les 4 acp des fréquences
     variable_acp = list()
 
     for freq in frequencies:
         data_pca = dict_pca[freq].T
         data_norm = (data_pca - data_pca.mean()) / data_pca.std()
-    
-    
+
         corr = data_norm.corr()
-    
-    
+
         pca = PCA(n_components=5).set_output(transform='pandas')
         data_pca_transformed = pca.fit_transform(corr)
-        
 
-        index = [label.split('_')[0] for label in data_pca_transformed.index]        
+        index = [label.split('_')[0] for label in data_pca_transformed.index]
         data_pca_transformed.index = index
-        data_pca_transformed.columns = [f"c{_}" for _ in range(1,len(data_pca_transformed.columns)+1)]
-        data_pca_transformed.columns = [col+"_"+freq for col in data_pca_transformed.columns]
-        
-        variable_acp.append(data_pca_transformed)
-       
+        data_pca_transformed.columns = [f"c{_}" for _ in range(1, len(data_pca_transformed.columns) + 1)]
+        data_pca_transformed.columns = [col + "_" + freq for col in data_pca_transformed.columns]
 
-    #coordonnées dans l'espace latent à utiliser pour le double SVM       
-    proj_pca_concat = pd.concat(variable_acp, axis = 1)
+        variable_acp.append(data_pca_transformed)
+
+    # coordonnées dans l'espace latent à utiliser pour le double SVM
+    proj_pca_concat = pd.concat(variable_acp, axis=1)
     return proj_pca_concat
 
+
 def assign_class(index):
-        if index.startswith("AD"):
-            return "AD"
-        elif index.startswith("MCI"):
-            return "MCI"
-        elif index.startswith("SCI"):
-            return "SCI"
-        else:
-            return "Unknown"
+    if index.startswith("AD"):
+        return "AD"
+    elif index.startswith("MCI"):
+        return "MCI"
+    elif index.startswith("SCI"):
+        return "SCI"
+    else:
+        return "Unknown"
+
+
+def lda_for_var_selection(data, label, variance_threshold=0.9):
+    """
+        Réalise une LDA sur l'ensemble des variables.
+
+        Arguments:
+            data : les variables
+            label : les classes
+            variance_threshold : la variance expliquée cumulée à conserver
+
+        Retourne:
+            Les indices des variables classées par ordre décroissant d'importance sur le premier axe.
+        """
+    # Conversion DataFrame -> numpy array si nécessaire
+    if isinstance(data, pd.DataFrame):
+        feature_names = data.columns  # Noms des colonnes
+        data = data.values  # Conversion en array numpy
+    else:
+        feature_names = None
+
+    # Normalisation des données
+    scaler = StandardScaler()
+    data = scaler.fit_transform(data)
+
+    # Étape 1 : Entraînement de la LDA
+    lda = LinearDiscriminantAnalysis()
+    lda.fit(data, label)
+
+    # Étape 2 : Extraction des coefficients absolus du premier axe discriminant
+    coefficients = np.abs(lda.coef_).mean(axis=0)
+
+    # Étape 3 : Classement des indices des variables par importance (ordre décroissant)
+    sorted_indices = np.argsort(coefficients)[::-1]
+
+    # Étape 4 : Calcul de la variance expliquée cumulée
+    explained_variance = coefficients[sorted_indices] / np.sum(coefficients)
+    cumulative_variance = np.cumsum(explained_variance)
+
+    # Étape 5 : Sélection des variables expliquant au moins `variance_threshold`
+    num_features_to_select = np.argmax(cumulative_variance >= variance_threshold) + 1
+    selected_indices = sorted_indices[:num_features_to_select]
+
+    # Extraction des variables sélectionnées
+    selected_features = data[:, selected_indices]
+
+    # Récupération des noms des colonnes si disponibles
+    selected_features_names = (
+        feature_names[selected_indices] if feature_names is not None else None
+    )
+
+    return selected_indices, selected_features, selected_features_names
