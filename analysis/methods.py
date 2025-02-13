@@ -101,11 +101,12 @@ def xgboost_skf(data: pd.DataFrame, verbose=False, k=5,
             float: La moyenne de l'accuracy sur les plis de validation.
     """
     df_data = data.copy()
+    X_data = df_data.drop(columns=["State"])  # Variables explicatives
+    y_data = df_data["State"]  # Classes cibles
 
     # Map labels to integers
     corresp_y = {state: i for i, state in enumerate(df_data["State"].unique())}
-    df_data["State"] = df_data["State"].map(corresp_y)
-
+    y_data = y_data.map(corresp_y)
     model = XGBClassifier()
     if use_stratified_kfold:
         skf = StratifiedKFold(n_splits=k)
@@ -115,17 +116,25 @@ def xgboost_skf(data: pd.DataFrame, verbose=False, k=5,
     accuracies = []
     output = np.zeros(len(df_data))
 
-    for train_index, test_index in skf.split(df_data.iloc[:, 2:], df_data["State"]):
-        X_train, X_test = df_data.iloc[train_index, 2:], df_data.iloc[test_index, 2:]
-        y_train, y_test = df_data.iloc[train_index]["State"], df_data.iloc[test_index]["State"]
+    for train_index, test_index in skf.split(X_data, y_data):
+        # Séparation des ensembles d'entraînement et de test
+        X_train, X_test = X_data.iloc[train_index], X_data.iloc[test_index]
+        y_train, y_test = y_data.iloc[train_index], y_data.iloc[test_index]
 
+        # Gestion du déséquilibre avec RandomOverSampler
         ros = RandomOverSampler(random_state=42)
         X_train, y_train = ros.fit_resample(X_train, y_train)
 
+        # Entraînement du modèle XGBoost
         model.fit(X_train, y_train)
+
+        # Prédictions sur l'ensemble de test
         y_pred = model.predict(X_test)
 
+        # Stockage des prédictions
         output[test_index] = y_pred
+
+        # Calcul de l'accuracy pour ce pli
         accuracies.append(accuracy_score(y_test, y_pred))
 
     mean_accuracy = np.mean(accuracies)
@@ -183,21 +192,34 @@ def svm_skf_gridsearch(data, verbose=False, stratified=True):
 
     accuracies = []
     output = np.zeros(len(df_data))
+    # Séparation des données explicatives et de la cible
+    X_data = df_data.drop(columns=["State"])  # Variables explicatives
+    y_data = df_data["State"]  # Classes cibles
 
-    for train_index, test_index in skf.split(df_data.iloc[:, :-1], df_data["State"]):
-        X_train, X_test = df_data.iloc[train_index, :-1], df_data.iloc[test_index, :-1]
-        y_train, y_test = df_data.iloc[train_index]["State"], df_data.iloc[test_index]["State"]
+    # Validation croisée avec StratifiedKFold
+    for train_index, test_index in skf.split(X_data, y_data):
+        # Séparation des ensembles d'entraînement et de test
+        X_train, X_test = X_data.iloc[train_index], X_data.iloc[test_index]
+        y_train, y_test = y_data.iloc[train_index], y_data.iloc[test_index]
 
+        # Gestion du déséquilibre avec RandomOverSampler
         ros = RandomOverSampler(random_state=42)
         X_train, y_train = ros.fit_resample(X_train, y_train)
 
+        # Recherche des hyperparamètres avec GridSearchCV
         grid_search = GridSearchCV(model, param_grid, cv=3, scoring='accuracy')
         grid_search.fit(X_train, y_train)
 
+        # Meilleur modèle trouvé
         best_model = grid_search.best_estimator_
+
+        # Prédictions sur l'ensemble de test
         y_pred = best_model.predict(X_test)
 
+        # Stockage des prédictions
         output[test_index] = y_pred
+
+        # Calcul de l'accuracy pour ce pli
         accuracies.append(accuracy_score(y_test, y_pred))
 
     mean_accuracy = np.mean(accuracies)
