@@ -37,7 +37,9 @@ df_data = dict_to_df(data_dict)
 
 #%% ACP
 df_freq = patient_info_by_frequency(data_dict)
-acp_patient = pca_on_patients(df_freq, cum_var_threshold=0.95)
+# %%
+acp_patient = pca_on_patients(df_freq, cum_var_threshold=0.60)
+
 
 # %%
 y_pred_svm, accuracy_svm = svm_skf_gridsearch(acp_patient, mode="multi", verbose=True)
