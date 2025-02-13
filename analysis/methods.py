@@ -142,7 +142,7 @@ def xgboost_skf(data: pd.DataFrame, verbose=False, k=5,
 
 
 def svm_skf_gridsearch(data, mode: Literal["multi", "1v1v1"] = "multi", verbose=False,
-                       stratified=True, p_kernel="linear"):
+                       stratified=True, p_kernel=["linear", "rbf", "sigmoid", "poly"]):
     """
     Applique une classification SVM avec (Stratified)KFold et GridSearchCV pour optimiser les hyperparamètres.
 
@@ -170,14 +170,14 @@ def svm_skf_gridsearch(data, mode: Literal["multi", "1v1v1"] = "multi", verbose=
     df_data["State"] = df_data["State"].map(corresp_y)
 
     if mode == "multi":
-        model = SVC(kernel=p_kernel, probability=True)
+        model = SVC( probability=True)
     elif mode == "1v1v1":
-        model = SVC(kernel=p_kernel, decision_function_shape="ovo", probability=True)
+        model = SVC(decision_function_shape="ovo", probability=True)
 
     param_grid = {
         'C': [0.1, 1, 10, 100],
         'gamma': [1, 0.1, 0.01, 0.001],
-        'kernel': [p_kernel]
+        'kernel': p_kernel
     }
 
     if stratified:

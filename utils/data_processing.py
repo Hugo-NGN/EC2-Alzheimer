@@ -269,13 +269,14 @@ def pca_on_patients(data_dict, cum_var_threshold=0.95,
         pca_data = pca.fit_transform(data_norm)
 
         pca_data = pd.DataFrame(pca_data, columns=[f"{freq}_PC{i+1}" for i in range(n_comp)])
-        pca_df = pd.concat([pca_data, pca_df], axis=1)
+        pca_df = pd.concat([pca_df, pca_data], axis=1)
         pca_df["State"] = [assign_class(index) for index in data.index]
         pca_df["Patient"] = [int(index.split("_")[-1]) for index in data.index]
 
         # Make "State" and "Patient" the first columns
         cols = pca_df.columns.tolist()
-        cols = cols[-2:] + cols[:-2]
+        cols.insert(0, cols.pop(cols.index('State')))
+        cols.insert(1, cols.pop(cols.index('Patient')))
         pca_df = pca_df[cols]
 
     return pca_df

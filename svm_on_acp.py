@@ -38,7 +38,7 @@ df_data = dict_to_df(data_dict)
 #%% ACP
 df_freq = patient_info_by_frequency(data_dict)
 # %%
-acp_patient = pca_on_patients(df_freq, cum_var_threshold=0.60)
+acp_patient = pca_on_patients(df_freq, cum_var_threshold=0.90)
 
 
 # %%
